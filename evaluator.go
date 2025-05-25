@@ -3,53 +3,267 @@ package main
 
 import (
 	"fmt"
-	"math" // Needed for Abs, Floor, Round in the future
-	// Needed for complex operations in Stage 1
-	"strconv" // To convert string to float64
+	"math"
+	"math/cmplx"
+	"strconv"
+	"strings" // For ToLower on function names
 )
 
-// calculateExpression is the entry point for calculation logic
-// In Stage 0, it's a stub that attempts a simple conversion.
+// calculateExpression orchestrates Lex, Parse, EvaluateRPN, and formatComplexOutput
 func calculateExpression(expressionString string) (string, error) {
-	// Full flow (Later Stages):
-	// 1. tokens, err := Lex(expressionString)
-	// 2. rpnQueue, err := Parse(tokens)
-	// 3. resultComplex, err := EvaluateRPN(rpnQueue)
-	// 4. return formatComplexOutput(resultComplex), nil
-
-	// Stub for Stage 0: Try to convert the expression to float64 and display it as complex.
-	// This is to verify the basic flow of main.go.
-	f, err := strconv.ParseFloat(expressionString, 64)
+	tokens, err := Lex(expressionString)
 	if err != nil {
-		// If not a simple number, indicate that full functionality is not implemented.
-		return "", NewCalculationError(fmt.Sprintf("direct evaluation of '%s' not supported in Stage 0. Full implementation in Stage 1.", expressionString))
+		return "", err
 	}
 
-	// Simulate a complex128 result (imaginary part zero for now)
-	resultComplex := complex(f, 0)
+	rpnQueue, err := Parse(tokens)
+	if err != nil {
+		return "", err
+	}
+	// For debugging RPN output from parser:
+	// fmt.Printf("RPN Debug: ")
+	// for _, t := range rpnQueue {
+	// 	fmt.Printf("{%s '%s' p%d} ", t.Type, t.Literal, t.Position)
+	// }
+	// fmt.Println()
 
-	// Output formatting (very simplified version for Stage 0)
-	// The full version with Epsilon will come in Stage 1.
-	return formatComplexOutput(resultComplex) // Use the stub formatter
+	resultComplex, err := EvaluateRPN(rpnQueue)
+	if err != nil {
+		return "", err
+	}
+
+	return formatComplexOutput(resultComplex), nil
 }
 
-// EvaluateRPN (stub) - Evaluates the RPN queue
-// Will be fully implemented in Stage 1
-func EvaluateRPN(rpnQueue []Token) (complex128, error) {
-	// RPN evaluator logic with complex128 stack
-	return complex(0, 0), NewCalculationError("RPN evaluator not yet implemented.")
-}
-
-// formatComplexOutput (stub) - Formats the complex128 output
-// Will be implemented with Epsilon logic in Stage 1
-func formatComplexOutput(c complex128) (string, error) {
+func formatComplexOutput(c complex128) string { // Renamed back if you prefer
 	realPart := real(c)
 	imagPart := imag(c)
 
-	if math.Abs(imagPart) < Epsilon { // Epsilon defined in core.go
-		return fmt.Sprintf("%g", realPart), nil
+	if cmplx.IsNaN(c) {
+		return "NaN"
 	}
-	// Format for complex numbers, e.g., "3+2i" or "3-2i"
-	// Using %+g for imagPart to ensure the sign is always present.
-	return fmt.Sprintf("%g%+gi", realPart, imagPart), nil
+	if cmplx.IsInf(c) {
+		return fmt.Sprintf("%v", c) // Default Go formatting for Inf
+	}
+
+	// Check if the imaginary part is negligible
+	if math.Abs(imagPart) < Epsilon { // Epsilon defined in core.go
+		// Imaginary part is negligible, display only the real part
+		// Check if the real part is essentially an integer
+		if math.Abs(realPart-math.Round(realPart)) < Epsilon { // Check if realPart is very close to an integer
+			return fmt.Sprintf("%.0f", realPart) // Format as integer
+		}
+		return fmt.Sprintf("%g", realPart) // Format as float (concise)
+	}
+
+	if math.Abs(realPart) < Epsilon { // Epsilon defined in core.go
+		// Imaginary part is negligible, display only the real part
+		// Check if the real part is essentially an integer
+		if math.Abs(imagPart-math.Round(imagPart)) < Epsilon { // Check if realPart is very close to an integer
+			return fmt.Sprintf("%.0fi", imagPart) // Format as integer
+		}
+		return fmt.Sprintf("%gi", imagPart) // Format as float (concise)
+	}
+
+	// Display the full complex number
+	// We need to format real and imaginary parts potentially as integers if they are whole numbers
+	realStr := ""
+	if math.Abs(realPart-math.Round(realPart)) < Epsilon {
+		realStr = fmt.Sprintf("%.0f", realPart)
+	} else {
+		realStr = fmt.Sprintf("%g", realPart)
+	}
+
+	imagStr := ""
+	// For the imaginary part, we always want the sign if it's not part of "0i"
+	if math.Abs(imagPart-math.Round(imagPart)) < Epsilon {
+		// %.0f for imagPart, then add "i"
+		// We need to handle the sign explicitly for the imaginary part if it's formatted as an integer
+		if imagPart >= 0 {
+			imagStr = fmt.Sprintf("+%.0fi", imagPart)
+		} else {
+			imagStr = fmt.Sprintf("%.0fi", imagPart) // Negative sign will be included by %.0f
+		}
+	} else {
+		imagStr = fmt.Sprintf("%+gi", imagPart) // %+g includes sign and is concise
+	}
+
+	// Special case: if real part is exactly 0 and imag part is not negligible
+	if math.Abs(realPart) < Epsilon {
+		// If imagStr already starts with "+", remove it if we are only printing the imaginary part
+		if imagStr[0] == '+' {
+			return imagStr[1:] // e.g. "2i" instead of "+2i"
+		}
+		return imagStr // e.g. "-2i"
+	}
+
+	return fmt.Sprintf("%s%s", realStr, imagStr)
+}
+
+// Helper for Modulo operation based on Gaussian integer remainder:
+// r = a - x*b, where x is the complex integer closest to a/b.
+func calculateModulo(a, b complex128, operatorToken Token) (complex128, error) {
+	if b == complex(0, 0) {
+		// Using cmplx.Abs to catch very small numbers that might behave like zero
+		// } else if cmplx.Abs(b) < Epsilon*Epsilon { // Avoid Epsilon itself if b could be Epsilon
+		return complex(math.NaN(), math.NaN()), NewCalculationError(
+			fmt.Sprintf("divisor is zero for modulo operator at position %d", operatorToken.Position),
+		)
+	}
+
+	divisionResult := a / b
+
+	// Quotient x is the complex integer closest to a/b
+	// math.Round rounds to the nearest even number for .5 cases (e.g., Round(2.5)=2, Round(3.5)=4)
+	// This is a standard rounding method.
+	roundedQuotient := complex(math.Round(real(divisionResult)), math.Round(imag(divisionResult)))
+
+	remainder := a - (roundedQuotient * b)
+	return remainder, nil
+}
+
+// EvaluateRPN evaluates a token queue in Reverse Polish Notation
+func EvaluateRPN(rpnQueue []Token) (complex128, error) {
+	operandStack := []complex128{}
+
+	for _, token := range rpnQueue {
+		switch token.Type {
+		case NUMBER:
+			// The lexer ensures number literals are in a format ParseFloat can handle (incl. scientific)
+			val, err := strconv.ParseFloat(token.Literal, 64)
+			if err != nil {
+				// This error should ideally be caught by the lexer if the number format is truly bad,
+				// but strconv.ParseFloat is the ultimate validator.
+				return complex(math.NaN(), math.NaN()), NewCalculationError(
+					fmt.Sprintf("invalid number format '%s' at position %d", token.Literal, token.Position),
+				)
+			}
+			operandStack = append(operandStack, complex(val, 0))
+
+		case IDENT:
+			// For Stage 1, IDENTs can be function names "log", "exp", or the constant "i"
+			var result complex128
+			//isProcessed := false
+
+			switch strings.ToLower(token.Literal) {
+			case "i":
+				result = complex(0, 1)
+				operandStack = append(operandStack, result)
+				//isProcessed = true
+			case "log", "exp": // These are functions
+				if len(operandStack) < 1 { // Check for argument
+					return complex(math.NaN(), math.NaN()), NewCalculationError(
+						fmt.Sprintf("insufficient operands for function '%s' at position %d", token.Literal, token.Position),
+					)
+				}
+				arg := operandStack[len(operandStack)-1]
+				operandStack = operandStack[:len(operandStack)-1] // Pop the argument
+
+				if token.Literal == "log" {
+					result = cmplx.Log(arg)
+				} else { // exp
+					result = cmplx.Exp(arg)
+				}
+				operandStack = append(operandStack, result)
+				//isProcessed = true
+			// Add "pi", "e" here in Stage 3
+			default:
+				return complex(math.NaN(), math.NaN()), NewCalculationError(
+					fmt.Sprintf("unknown function or identifier '%s' encountered during evaluation at position %d", token.Literal, token.Position),
+				)
+			}
+			// if !isProcessed { // Should be caught by default case above
+			// 	  // This logic is now inside the switch
+			// }
+
+		case PLUS, MINUS, ASTERISK, SLASH, PERCENT, CARET, UNARY_MINUS: // Add UNARY_MINUS
+			var op1, op2 complex128 // op1 is not used for unary
+			var numOperandsNeeded int
+
+			if token.Type == UNARY_MINUS {
+				numOperandsNeeded = 1
+			} else {
+				numOperandsNeeded = 2
+			}
+
+			if len(operandStack) < numOperandsNeeded {
+				return complex(math.NaN(), math.NaN()), NewCalculationError(
+					fmt.Sprintf("insufficient operands for operator '%s' (type %s) at position %d", token.Literal, token.Type, token.Position),
+				)
+			}
+
+			if numOperandsNeeded == 2 {
+				op2 = operandStack[len(operandStack)-1]
+				op1 = operandStack[len(operandStack)-2]
+				operandStack = operandStack[:len(operandStack)-2]
+			} else { // Unary
+				op2 = operandStack[len(operandStack)-1] // Unary op acts on op2
+				operandStack = operandStack[:len(operandStack)-1]
+			}
+
+			var result complex128
+			var opErr error
+
+			switch token.Type {
+			case PLUS:
+				result = op1 + op2
+			case MINUS:
+				result = op1 - op2
+			case ASTERISK:
+				result = op1 * op2
+			case SLASH:
+				result = op1 / op2
+			case PERCENT:
+				result, opErr = calculateModulo(op1, op2, token)
+				if opErr != nil {
+					return complex(math.NaN(), math.NaN()), opErr
+				}
+			case CARET:
+				result = cmplx.Pow(op1, op2)
+				//fmt.Printf("(%v)^(%v) = %v\n", op1, op2, result)
+			case UNARY_MINUS:
+				// op2 is the single operand for unary minus (e.g., the '4' in '-4')
+				tempRes := -op2 // Perform the negation, e.g., -(4+0i) -> (-4-0i)
+
+				// Normalize signed zeros in the result of this UNARY_MINUS operation.
+				// This ensures that if the user types "-N" (N positive real),
+				// it's treated as complex(-N, +0.0) for subsequent operations
+				// like Pow, aligning with the standard branch cut convention for Log.
+				r := real(tempRes)
+				i := imag(tempRes)
+
+				if r == 0.0 { // This normalizes -0.0 real to +0.0 real
+					r = 0.0 // Assigning 0.0 defaults to +0.0
+				}
+				if i == 0.0 { // This normalizes -0.0 imag to +0.0 imag
+					i = 0.0 // Assigning 0.0 defaults to +0.0
+				}
+				result = complex(r, i)
+			}
+			operandStack = append(operandStack, result)
+
+		default:
+			// This should not be reached if the RPN queue is well-formed by the parser
+			// and contains only known token types for evaluation.
+			return complex(math.NaN(), math.NaN()), NewCalculationError(
+				fmt.Sprintf("unexpected token type '%s' in RPN queue (token: '%s' at pos %d)", token.Type, token.Literal, token.Position),
+			)
+		}
+	}
+
+	// After processing all tokens, the stack should contain exactly one result.
+	if len(operandStack) == 1 {
+		return operandStack[0], nil
+	} else if len(operandStack) == 0 {
+		// This could happen if the RPN queue was empty (e.g. empty input string,
+		// though Parse should catch this) or an operator consumed all operands
+		// without producing a result (which shouldn't happen with correct logic).
+		return complex(math.NaN(), math.NaN()), NewCalculationError("invalid expression: no result on stack (empty RPN or malformed expression)")
+	} else {
+		// More than one value on the stack means the expression was malformed,
+		// typically too many numbers or too few operators.
+		return complex(math.NaN(), math.NaN()), NewCalculationError(
+			fmt.Sprintf("invalid expression: %d values left on stack, expected 1 (check operators and operands)", len(operandStack)),
+		)
+	}
 }

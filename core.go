@@ -3,40 +3,58 @@ package main
 
 import "fmt"
 
-// Epsilon constant for floating-point comparisons (important for complex128)
-const Epsilon = 1e-14 // A common value, adjust if necessary
+// Epsilon constant for floating-point comparisons
+const Epsilon = 1e-10
 
-// TokenType identifies the type of a token (string for easy debugging initially)
+// TokenType identifies the type of a token
 type TokenType string
 
-// Initial TokenType definitions (will be expanded in Stage 1)
+// TokenTypes for Stage 1
 const (
+	// Special tokens
 	ILLEGAL TokenType = "ILLEGAL" // Unrecognized token/character
 	EOF     TokenType = "EOF"     // End Of Input
 
+	// Literals
 	NUMBER TokenType = "NUMBER" // e.g., 123, 3.14
-	// More types like OPERATOR, LPAREN, IDENT, etc., will be added in Stage 1
+	IDENT  TokenType = "IDENT"  // For function names like log, exp
+
+	// Operators
+	PLUS        TokenType = "+"
+	MINUS       TokenType = "-"
+	ASTERISK    TokenType = "*"
+	SLASH       TokenType = "/"
+	PERCENT     TokenType = "%"           // Modulo
+	CARET       TokenType = "^"           // Power
+	UNARY_MINUS TokenType = "UNARY_MINUS" // Or UMINUS
+	UNARY_PLUS  TokenType = "UNARY_PLUS"  // Or UMINUS
+
+	// Delimiters
+	LPAREN   TokenType = "(" // Left Parenthesis
+	RPAREN   TokenType = ")" // Right Parenthesis
+	LBRACKET TokenType = "[" // Left Bracket
+	RBRACKET TokenType = "]" // Right Bracket
+	LBRACE   TokenType = "{" // Left Brace
+	RBRACE   TokenType = "}" // Right Brace
+	COMMA    TokenType = "," // For function arguments (though not heavily used in Stage 1 funcs)
 )
 
 // Token represents a lexical unit
 type Token struct {
-	Type    TokenType
-	Literal string // The literal value of the token (e.g., "123", "+")
-	// Position int    // Optional: Starting position in the input string for detailed errors
+	Type     TokenType
+	Literal  string // The literal value of the token
+	Position int    // for detailed error reporting
 }
 
-// CalculationError is a custom error type for the calculator
+// CalculationError (as defined in Stage 0)
 type CalculationError struct {
 	Message string
-	// Pos     int // Optional: position of the error
 }
 
 func (e *CalculationError) Error() string {
-	// In the future: return fmt.Sprintf("Calculation error (pos %d): %s", e.Pos, e.Message)
 	return fmt.Sprintf("Calculation error: %s", e.Message)
 }
 
-// NewCalculationError creates a new CalculationError
-func NewCalculationError(message string /*, pos int*/) error {
-	return &CalculationError{Message: message /*, Pos: pos*/}
+func NewCalculationError(message string) error {
+	return &CalculationError{Message: message}
 }
