@@ -39,7 +39,7 @@ func startInteractiveMode() {
 		if err != nil {
 			// Handle EOF (Ctrl+D) gracefully
 			if err.Error() == "EOF" {
-				fmt.Println("\nExiting ToyCalc.")
+				fmt.Println("Exiting ToyCalc.")
 				break
 			}
 			fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
