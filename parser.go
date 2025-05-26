@@ -157,13 +157,16 @@ func (p *Parser) ParseToRPN() ([]Token, error) {
 
 		case IDENT:
 			isConstant := false
-			isKnownFunction := false
+			isKnownFunction := false // We'll use this to differentiate known functions from unknown idents
 
 			lowerLiteral := strings.ToLower(currentToken.Literal)
 			switch lowerLiteral {
-			case "i": // Add "pi", "e" here in Stage 3
+			case "i", "pi", "e": // Added "pi" and "e"
 				isConstant = true
-			case "log", "exp": // Add other Stage 1 & 2 functions here
+			case "log", "exp", // Stage 1 functions
+				"sin", "cos", "tan", "asin", "acos", "atan", // Stage 2 trig
+				"sinh", "cosh", "tanh", "asinh", "acosh", "atanh", // Stage 2 hyperbolic
+				"log10", "log2", "sqrt": // Stage 2 other
 				isKnownFunction = true
 			}
 
@@ -173,16 +176,11 @@ func (p *Parser) ParseToRPN() ([]Token, error) {
 						fmt.Sprintf("unexpected constant '%s' at position %d; an operator may be missing", currentToken.Literal, currentToken.Position),
 					)
 				}
-				p.outputQueue = append(p.outputQueue, currentToken) // Token is {IDENT, "i", pos}
-				p.expectOperand = false
+				p.outputQueue = append(p.outputQueue, currentToken) // Token is {IDENT, "pi", pos}, etc.
+				p.expectOperand = false                             // After an operand/constant, we expect an operator
 			} else if isKnownFunction {
-				// This is a function name. It acts like an operator and expects an LPAREN.
-				// The 'expectOperand' state before a function name could be true or false.
-				// e.g. "log(x)" (expectOperand=true before log)
-				// e.g. "5*log(x)" (expectOperand=true before log, set by '*')
-				p.pushOperator(currentToken)
-				// After pushing a function name to op stack, we still expect its LPAREN, not an operand directly.
-				// The LPAREN case will set expectOperand = true for the first argument.
+				p.pushOperator(currentToken) // Function name goes to operator stack
+				// expectOperand state is managed by LPAREN that should follow a function
 			} else {
 				// Unknown identifier
 				return nil, NewCalculationError(

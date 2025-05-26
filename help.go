@@ -29,6 +29,8 @@ var helpTopics = map[string]string{
 		"- Grouping: (), [], {}\n" +
 		"- Functions: log(x) (natural), exp(x)\n" +
 		"- Constant: i (imaginary unit, use as 'i', e.g., '5*i')\n\n" +
+		"- Functions: log(x) (natural), exp(x), sin(x), cos(x), etc. (see 'help functions')\n" + // Updated
+		"- Constants: i, pi, e (see 'help constants')\n\n" + // Added
 		"Type 'help <topic>' for more information on a specific feature (e.g., 'help +', 'help log').",
 
 	"operators": "Supported operators:\n" +
@@ -100,10 +102,17 @@ var helpTopics = map[string]string{
 		"    Example: (1 + 2) * 3\n" +
 		"    Example: {[ (10 - 2) / 4 ] + 1}^2",
 
-	"functions": "Supported functions (Stage 1):\n" +
+	"functions": "Supported functions:\n" + // Updated list
 		"  log(x)   : Natural logarithm (base e), principal value.\n" +
-		"  exp(x)   : Exponential function (e^x).\n\n" +
-		"Type 'help <function_name>' for more details (e.g., 'help log').",
+		"  exp(x)   : Exponential function (e^x).\n" +
+		"  sin(x), cos(x), tan(x): Trigonometric functions (x in radians).\n" +
+		"  asin(x), acos(x), atan(x), atan2(y,x): Inverse trigonometric functions.\n" +
+		"  sinh(x), cosh(x), tanh(x): Hyperbolic functions.\n" +
+		"  asinh(x), acosh(x), atanh(x): Inverse hyperbolic functions.\n" +
+		"  log10(x): Base-10 logarithm.\n" +
+		"  log2(x) : Base-2 logarithm.\n" +
+		"  sqrt(x) : Square root (principal value).\n\n" +
+		"Type 'help <function_name>' for more details.",
 
 	"log": "Function: log(x)\n" +
 		"  Calculates the natural logarithm (base e) of the complex number x.\n" +
@@ -134,6 +143,95 @@ var helpTopics = map[string]string{
 		"  If the real part is negligible and the imaginary part is not, the output is like '2i' or '-3.5i'.\n" +
 		"  Whole numbers (in real or imaginary parts) are displayed without unnecessary decimal points (e.g., '5' instead of '5.0').\n" +
 		"  Handles 'NaN' (Not a Number) and standard complex 'Inf' (Infinity) representations for results where applicable.",
+	"constants": "Supported constants:\n" +
+		"  i  : The imaginary unit, complex(0, 1).\n" +
+		"  pi : The mathematical constant π (Pi), approx. 3.1415926535...\n" +
+		"  e  : Euler's number (base of natural logarithm), approx. 2.7182818284...\n\n" +
+		"Type 'help <constant_name>' for more details (e.g., 'help pi').",
+
+	"pi": "Constant: pi\n" +
+		"  Represents the mathematical constant π (Pi), the ratio of a circle's circumference to its diameter.\n" +
+		"  Value: " + fmt.Sprintf("%.10f...", math.Pi) + "\n" + // Show some precision
+		"    Example: sin(pi/2)    (Result: 1)\n" +
+		"    Example: 2*pi         (Result: " + fmt.Sprintf("%g", 2*math.Pi) + ")",
+
+	"e": "Constant: e\n" +
+		"  Represents Euler's number, the base of the natural logarithm.\n" +
+		"  Value: " + fmt.Sprintf("%.10f...", math.E) + "\n" +
+		"    Example: log(e)         (Result: 1)\n" +
+		"    Example: e^2            (Result: " + fmt.Sprintf("%g", math.E*math.E) + ")",
+	"sin": "Function: sin(x)\n" +
+		"  Calculates the trigonometric sine of the complex number x.\n" +
+		"  x is assumed to be in radians.\n" +
+		"    Example: sin(0)         (Result: 0)\n" +
+		"    Example: sin(" + fmt.Sprintf("%g", math.Pi/2) + ") (Result: 1)\n" +
+		"    Example: sin(i)         (Result: " + fmt.Sprintf("%gi", math.Sinh(1)) + ") (since sin(ix) = i*sinh(x))",
+
+	"cos": "Function: cos(x)\n" +
+		"  Calculates the trigonometric cosine of the complex number x.\n" +
+		"  x is assumed to be in radians.\n" +
+		"    Example: cos(0)         (Result: 1)\n" +
+		"    Example: cos(" + fmt.Sprintf("%g", math.Pi) + ")   (Result: -1)\n" +
+		"    Example: cos(i)         (Result: " + fmt.Sprintf("%g", math.Cosh(1)) + ") (since cos(ix) = cosh(x))",
+
+	"tan": "Function: tan(x)\n" +
+		"  Calculates the trigonometric tangent of the complex number x (sin(x)/cos(x)).\n" +
+		"  x is assumed to be in radians.\n" +
+		"  Result may be Inf or NaN if cos(x) is zero (e.g., at pi/2, 3pi/2).\n" +
+		"    Example: tan(0)         (Result: 0)\n" +
+		"    Example: tan(" + fmt.Sprintf("%g", math.Pi/4) + ") (Result: 1)",
+
+	"asin": "Function: asin(x)\n" +
+		"  Calculates the principal value of the inverse trigonometric sine (arcsine) of x.\n" +
+		"    Example: asin(0)        (Result: 0)\n" +
+		"    Example: asin(1)        (Result: " + fmt.Sprintf("%g", math.Pi/2) + ")",
+
+	"acos": "Function: acos(x)\n" +
+		"  Calculates the principal value of the inverse trigonometric cosine (arccosine) of x.\n" +
+		"    Example: acos(1)        (Result: 0)\n" +
+		"    Example: acos(0)        (Result: " + fmt.Sprintf("%g", math.Pi/2) + ")",
+
+	"atan": "Function: atan(x)\n" +
+		"  Calculates the principal value of the inverse trigonometric tangent (arctangent) of x.\n" +
+		"    Example: atan(0)        (Result: 0)\n" +
+		"    Example: atan(1)        (Result: " + fmt.Sprintf("%g", math.Pi/4) + ")",
+
+	"sinh": "Function: sinh(x)\n" +
+		"  Calculates the hyperbolic sine of the complex number x.\n" +
+		"    Example: sinh(0)        (Result: 0)\n" +
+		"    Example: sin(i*(" + fmt.Sprintf("%g", math.Pi/2) + ")) (Result: i)", // sin(i*x) = i*sinh(x) so sinh(x) = -i*sin(ix)
+
+	"cosh": "Function: cosh(x)\n" +
+		"  Calculates the hyperbolic cosine of the complex number x.\n" +
+		"    Example: cosh(0)        (Result: 1)\n" +
+		"    Example: cos(i)         (Result: " + fmt.Sprintf("%g", math.Cosh(1)) + ")", // cos(ix) = cosh(x)
+
+	"tanh": "Function: tanh(x)\n" +
+		"  Calculates the hyperbolic tangent of the complex number x (sinh(x)/cosh(x)).\n" +
+		"    Example: tanh(0)        (Result: 0)",
+
+	"asinh": "Function: asinh(x)\n  Calculates the principal value of the inverse hyperbolic sine of x.\n    Example: asinh(0) (Result: 0)",
+	"acosh": "Function: acosh(x)\n  Calculates the principal value of the inverse hyperbolic cosine of x.\n    Example: acosh(1) (Result: 0)",
+	"atanh": "Function: atanh(x)\n  Calculates the principal value of the inverse hyperbolic tangent of x.\n    Example: atanh(0) (Result: 0)",
+
+	"log10": "Function: log10(x)\n" +
+		"  Calculates the base-10 logarithm of the complex number x.\n" +
+		"  Returns the principal value.\n" +
+		"    Example: log10(100)     (Result: 2)\n" +
+		"    Example: log10(1)       (Result: 0)",
+
+	"log2": "Function: log2(x)\n" +
+		"  Calculates the base-2 logarithm of the complex number x.\n" +
+		"  Returns the principal value.\n" +
+		"    Example: log2(8)        (Result: 3)\n" +
+		"    Example: log2(1)        (Result: 0)",
+
+	"sqrt": "Function: sqrt(x)\n" +
+		"  Calculates the principal value of the square root of the complex number x.\n" +
+		"  Equivalent to x^0.5.\n" +
+		"    Example: sqrt(4)        (Result: 2)\n" +
+		"    Example: sqrt(-1)       (Result: i)\n" + // Output format will show 'i'
+		"    Example: sqrt(2i)       (Result: 1+1i)", // sqrt(2i) = 1+i
 }
 
 // displayHelp shows help information.
@@ -141,8 +239,13 @@ var helpTopics = map[string]string{
 // If topic is specified, it shows help for that topic.
 func displayHelp(topic string) {
 	topic = strings.ToLower(strings.TrimSpace(topic))
-	availableTopics := []string{"usage", "general", "operators", "unary", "+", "-", "*", "/", "%", "^", "grouping", "functions", "log", "exp", "i", "output"}
-
+	availableTopics := []string{
+		"usage", "general", "operators", "unary", "+", "-", "*", "/", "%", "^", "grouping",
+		"functions", "log", "exp", "i", "pi", "e", "constants", "output", // Added pi, e, constants
+		"sin", "cos", "tan", "asin", "acos", "atan", /* atan2 removed */
+		"sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
+		"log10", "log2", "sqrt",
+	}
 	if topic == "" {
 		fmt.Println(helpTopics["general"])
 		fmt.Println("\nAvailable topics (type 'help <topic>'):")

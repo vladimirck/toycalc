@@ -571,7 +571,7 @@ func TestCalculateExpressionEndToEnd(t *testing.T) {
 	// For comparing float strings, use a helper or be mindful of precision.
 	// fmt.Sprintf("%g", ...) is used by formatComplexOutput, so we can use it for expected values.
 	//piStr := fmt.Sprintf("%g", math.Pi) // For use in expected strings if needed
-	eStr := fmt.Sprintf("%g", math.E) // For use in expected strings if needed
+	eStr := fmt.Sprintf("%.10g", math.E) // For use in expected strings if needed
 
 	testCases := []struct {
 		name                   string
@@ -622,8 +622,8 @@ func TestCalculateExpressionEndToEnd(t *testing.T) {
 
 		// Functions
 		{"E2E Log of 1", "log(1)", "0", ""},
-		{"E2E Log of E", fmt.Sprintf("log(%s)", eStr), "1", ""},
-		{"E2E Log of -1 (Principal)", "log(-1)", fmt.Sprintf("%gi", math.Pi), ""},
+		{"E2E Log of E", fmt.Sprintf("log(%v)", math.E), "1", ""},
+		{"E2E Log of -1 (Principal)", "log(-1)", fmt.Sprintf("%.10gi", math.Pi), ""},
 		{"E2E Exp of 0", "exp(0)", "1", ""},
 		{"E2E Exp of 1", "exp(1)", eStr, ""},
 		{"E2E Log(Exp(2.5))", "log(exp(2.5))", "2.5", ""},
@@ -635,6 +635,30 @@ func TestCalculateExpressionEndToEnd(t *testing.T) {
 		{"E2E i*i", "i*i", "-1", ""},
 		{"E2E i^2", "i^2", "-1", ""},
 		{"E2E -i", "-i", "-1i", ""},
+		{"constant pi", "pi", fmt.Sprintf("%.10g", math.Pi), ""},
+		{"constant e", "e", fmt.Sprintf("%.10g", math.E), ""},
+		{"expr with pi", "2*pi", fmt.Sprintf("%.10g", 2*math.Pi), ""},
+		{"expr with e", "e^2", fmt.Sprintf("%.10g", math.E*math.E), ""},
+		{"Euler's identity", "exp(i*pi)", "-1", ""}, // This is a classic!
+		{"log of e", "log(e)", "1", ""},
+		{"sin of pi/2", "sin(pi/2)", "1", ""},
+
+		// Update previous examples if they used hardcoded Pi or E values
+		// Example: from Stage 1 log tests
+		// {"E2E Log of E", fmt.Sprintf("log(%s)", eStr), "1", ""}, // Old
+		{"E2E Log of E new", "log(e)", "1", ""}, // New
+
+		// Example: from Stage 1 exp tests
+		// {"E2E Exp of 1", "exp(1)", eStr, ""}, // Old
+		{"E2E Exp of 1 new", "exp(1)", fmt.Sprintf("%.10g", math.E), ""}, // Still useful to test exp(1)
+
+		// Example: from Stage 2 trig tests
+		// {"sin(pi/2)", fmt.Sprintf("sin(%g)", math.Pi/2), "1", ""}, // Old
+		{"sin(pi/2) new", "sin(pi/2)", "1", ""}, // New
+
+		// Example: from Stage 2 hyperbolic tests
+		// {"cosh(i*pi)", fmt.Sprintf("cosh(i*%g)", math.Pi), "-1", ""}, // Old
+		{"cosh(i*pi) new", "cosh(i*pi)", "-1", ""}, // New
 
 		// Grouping Symbols
 		{"E2E Parentheses", "(1+2)*3", "9", ""},

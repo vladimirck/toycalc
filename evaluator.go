@@ -53,7 +53,7 @@ func formatComplexOutput(c complex128) string { // Renamed back if you prefer
 		if math.Abs(realPart-math.Round(realPart)) < Epsilon { // Check if realPart is very close to an integer
 			return fmt.Sprintf("%.0f", realPart) // Format as integer
 		}
-		return fmt.Sprintf("%g", realPart) // Format as float (concise)
+		return fmt.Sprintf("%0.10g", realPart) // Format as float (concise)
 	}
 
 	if math.Abs(realPart) < Epsilon { // Epsilon defined in core.go
@@ -62,7 +62,7 @@ func formatComplexOutput(c complex128) string { // Renamed back if you prefer
 		if math.Abs(imagPart-math.Round(imagPart)) < Epsilon { // Check if realPart is very close to an integer
 			return fmt.Sprintf("%.0fi", imagPart) // Format as integer
 		}
-		return fmt.Sprintf("%gi", imagPart) // Format as float (concise)
+		return fmt.Sprintf("%.10gi", imagPart) // Format as float (concise)
 	}
 
 	// Display the full complex number
@@ -71,7 +71,7 @@ func formatComplexOutput(c complex128) string { // Renamed back if you prefer
 	if math.Abs(realPart-math.Round(realPart)) < Epsilon {
 		realStr = fmt.Sprintf("%.0f", realPart)
 	} else {
-		realStr = fmt.Sprintf("%g", realPart)
+		realStr = fmt.Sprintf("%.10g", realPart)
 	}
 
 	imagStr := ""
@@ -85,7 +85,7 @@ func formatComplexOutput(c complex128) string { // Renamed back if you prefer
 			imagStr = fmt.Sprintf("%.0fi", imagPart) // Negative sign will be included by %.0f
 		}
 	} else {
-		imagStr = fmt.Sprintf("%+gi", imagPart) // %+g includes sign and is concise
+		imagStr = fmt.Sprintf("%+.10gi", imagPart) // %+g includes sign and is concise
 	}
 
 	// Special case: if real part is exactly 0 and imag part is not negligible
@@ -141,40 +141,83 @@ func EvaluateRPN(rpnQueue []Token) (complex128, error) {
 			operandStack = append(operandStack, complex(val, 0))
 
 		case IDENT:
-			// For Stage 1, IDENTs can be function names "log", "exp", or the constant "i"
 			var result complex128
-			//isProcessed := false
+			processed := false // To track if the IDENT was handled
 
-			switch strings.ToLower(token.Literal) {
+			lowerLiteral := strings.ToLower(token.Literal)
+			switch lowerLiteral {
+			// Constants
 			case "i":
 				result = complex(0, 1)
 				operandStack = append(operandStack, result)
-				//isProcessed = true
-			case "log", "exp": // These are functions
-				if len(operandStack) < 1 { // Check for argument
+				processed = true
+			case "pi":
+				result = complex(math.Pi, 0)
+				operandStack = append(operandStack, result)
+				processed = true
+			case "e":
+				result = complex(math.E, 0)
+				operandStack = append(operandStack, result)
+				processed = true
+
+			// Stage 1 & 2 Functions (all unary for now)
+			case "log", "exp", "sin", "cos", "tan", "asin", "acos", "atan",
+				"sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
+				"log10", "log2", "sqrt":
+				if len(operandStack) < 1 {
 					return complex(math.NaN(), math.NaN()), NewCalculationError(
-						fmt.Sprintf("insufficient operands for function '%s' at position %d", token.Literal, token.Position),
+						fmt.Sprintf("insufficient operands for function '%s' at position %d (expected 1)",
+							token.Literal, token.Position),
 					)
 				}
-				arg := operandStack[len(operandStack)-1]
-				operandStack = operandStack[:len(operandStack)-1] // Pop the argument
+				arg1 := operandStack[len(operandStack)-1]
+				operandStack = operandStack[:len(operandStack)-1] // Pop one argument
 
-				if token.Literal == "log" {
-					result = cmplx.Log(arg)
-				} else { // exp
-					result = cmplx.Exp(arg)
+				switch lowerLiteral { // Inner switch for function logic
+				case "log":
+					result = cmplx.Log(arg1)
+				case "exp":
+					result = cmplx.Exp(arg1)
+				case "sin":
+					result = cmplx.Sin(arg1)
+				case "cos":
+					result = cmplx.Cos(arg1)
+				case "tan":
+					result = cmplx.Tan(arg1)
+				case "asin":
+					result = cmplx.Asin(arg1)
+				case "acos":
+					result = cmplx.Acos(arg1)
+				case "atan":
+					result = cmplx.Atan(arg1)
+				case "sinh":
+					result = cmplx.Sinh(arg1)
+				case "cosh":
+					result = cmplx.Cosh(arg1)
+				case "tanh":
+					result = cmplx.Tanh(arg1)
+				case "asinh":
+					result = cmplx.Asinh(arg1)
+				case "acosh":
+					result = cmplx.Acosh(arg1)
+				case "atanh":
+					result = cmplx.Atanh(arg1)
+				case "log10":
+					result = cmplx.Log10(arg1)
+				case "log2":
+					result = cmplx.Log(arg1) / cmplx.Log(complex(2, 0))
+				case "sqrt":
+					result = cmplx.Sqrt(arg1)
 				}
 				operandStack = append(operandStack, result)
-				//isProcessed = true
-			// Add "pi", "e" here in Stage 3
-			default:
+				processed = true
+			} // End inner switch for function/constant names
+
+			if !processed { // If IDENT was not a known constant or function
 				return complex(math.NaN(), math.NaN()), NewCalculationError(
-					fmt.Sprintf("unknown function or identifier '%s' encountered during evaluation at position %d", token.Literal, token.Position),
+					fmt.Sprintf("unknown identifier '%s' encountered during evaluation at position %d", token.Literal, token.Position),
 				)
 			}
-			// if !isProcessed { // Should be caught by default case above
-			// 	  // This logic is now inside the switch
-			// }
 
 		case PLUS, MINUS, ASTERISK, SLASH, PERCENT, CARET, UNARY_MINUS: // Add UNARY_MINUS
 			var op1, op2 complex128 // op1 is not used for unary
