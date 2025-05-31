@@ -25,4 +25,5 @@ go.work.sum
 .env
 
 #the executable file
-toycalc
+./toycalc
+.toycalc_history

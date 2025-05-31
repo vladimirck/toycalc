@@ -1,56 +1,93 @@
-// main.go
 package main
 
 import (
-	"bufio" // For reading interactive input
+	"bufio"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/chzyer/readline" // Import the readline library
 )
 
 // processExpression encapsulates the calculation and printing logic.
-// This can be used by both CLI mode and interactive mode.
 func processExpression(expressionString string) {
 	if strings.TrimSpace(expressionString) == "" {
 		return // Do nothing for empty input in REPL
 	}
-
 	resultStr, err := calculateExpression(expressionString)
 	if err != nil {
-		// For REPL, print error to stdout and continue. For CLI, it exits in main.
-		// We'll handle CLI exit in main based on this function returning an error.
-		// Let's modify calculateExpression to return error, and this func to also return error.
-		// Or, for simplicity now, print error here and main decides to exit or not.
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return
 	}
 	fmt.Println(resultStr)
 }
 
-// startInteractiveMode starts the REPL for toycalc.
+// startInteractiveMode starts the REPL for toycalc using the readline library.
 func startInteractiveMode() {
-	fmt.Println("ToyCalc Interactive Mode (v0.1 Stage 1)") // Adjust version/stage as you like
+	fmt.Println("ToyCalc Interactive Mode (v0.2 Stage 1 with Readline)") // Updated version
 	fmt.Println("Type 'exit' or 'quit' to leave, or 'help' for assistance.")
-	reader := bufio.NewReader(os.Stdin)
+	fmt.Println("Use arrow keys for history and line editing.")
+
+	var historyFile string
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not get user home directory for history: %v. Using local history file.\n", err)
+		historyFile = ".toycalc_history"
+	} else {
+		historyFile = filepath.Join(homeDir, ".toycalc_history")
+	}
+
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:          ">>> ",
+		HistoryFile:     historyFile,
+		AutoComplete:    nil, // You can add autocompletion later if needed
+		InterruptPrompt: "^C",
+		EOFPrompt:       "exit", // What happens when Ctrl+D is pressed
+
+		HistorySearchFold:   true, // Case-insensitive history search
+		FuncFilterInputRune: nil,  // No input filtering
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error initializing readline: %v\n", err)
+		// Fallback to basic input if readline fails (optional)
+		fmt.Println("Falling back to basic input due to readline initialization error.")
+		startBasicInteractiveMode() // You might want to keep your old bufio version as a fallback
+		return
+	}
+	defer rl.Close()     // Make sure to close readline instance
+	rl.SetPrompt(">>> ") // Redundant if set in NewEx, but can be changed dynamically
 
 	for {
-		fmt.Print(">>> ")
-		input, err := reader.ReadString('\n')
+		line, err := rl.Readline()
+
 		if err != nil {
-			// Handle EOF (Ctrl+D) gracefully
-			if err.Error() == "EOF" {
-				fmt.Println("Exiting ToyCalc.")
+			if err == readline.ErrInterrupt { // Ctrl+C
+				// If you want Ctrl+C to exit, uncomment below. Otherwise, it just breaks the current line.
+				// fmt.Println("Interrupt received, exiting.")
+				// break
+				continue // Or print a new prompt
+			} else if err == io.EOF { // Ctrl+D
+				fmt.Println("Exiting ToyCalc (EOF).")
 				break
 			}
+			// Other read errors
 			fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
-			continue // Or break, depending on desired robustness
+			break // Exit on other persistent errors
 		}
 
-		input = strings.TrimSpace(input) // Remove leading/trailing whitespace, including the newline
+		input := strings.TrimSpace(line)
 
 		if input == "" {
 			continue // Skip empty lines
 		}
+
+		// Add to history (readline handles this automatically if HistoryFile is set,
+		// but you can also manually add if needed for more control using rl.SaveHistory(input))
+		// For automatic history saving to file on each command, it's usually handled by rl.Close()
+		// or if you need explicit saves, you might do it after each command if not using HistoryFile in config.
+		// With HistoryFile in NewEx, readline typically handles loading on start and saving on close.
 
 		lowerInput := strings.ToLower(input)
 		if lowerInput == "exit" || lowerInput == "quit" {
@@ -59,44 +96,88 @@ func startInteractiveMode() {
 		}
 
 		if strings.HasPrefix(lowerInput, "help") {
-			parts := strings.Fields(input) // Split "help topic"
+			parts := strings.Fields(input)
 			topic := ""
 			if len(parts) > 1 {
 				topic = strings.Join(parts[1:], " ")
 			}
-			displayHelp(topic) // Call your existing help display function
+			displayHelp(topic)
 		} else {
-			// Process the expression
+			processExpression(input)
+		}
+	}
+	// Save history on exit (readline might do this automatically on Close if HistoryFile is set)
+	// err = rl.SaveHistory(historyFile) // This might be redundant if HistoryFile is used in NewEx
+	// if err != nil {
+	// 	fmt.Fprintf(os.Stderr, "Error saving history: %v\n", err)
+	// }
+}
+
+// startBasicInteractiveMode is your original interactive mode as a fallback
+func startBasicInteractiveMode() {
+	fmt.Println("ToyCalc Interactive Mode (v0.1 Stage 1 - Basic)")
+	fmt.Println("Type 'exit' or 'quit' to leave, or 'help' for assistance.")
+	reader := NewStdinReader() // Custom function to create bufio.Reader if you want to keep it
+	for {
+		fmt.Print(">>> ")
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			if err.Error() == "EOF" { // bufio uses err.Error() == "EOF"
+				fmt.Println("Exiting ToyCalc.")
+				break
+			}
+			fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
+			continue
+		}
+		input = strings.TrimSpace(input)
+		if input == "" {
+			continue
+		}
+		lowerInput := strings.ToLower(input)
+		if lowerInput == "exit" || lowerInput == "quit" {
+			fmt.Println("Exiting ToyCalc.")
+			break
+		}
+		if strings.HasPrefix(lowerInput, "help") {
+			parts := strings.Fields(input)
+			topic := ""
+			if len(parts) > 1 {
+				topic = strings.Join(parts[1:], " ")
+			}
+			displayHelp(topic)
+		} else {
 			processExpression(input)
 		}
 	}
 }
 
+// NewStdinReader is a helper for the basic mode if you keep it.
+// This is just to avoid a direct bufio.NewReader in startBasicInteractiveMode
+// if you are removing "bufio" import completely when readline works.
+// For now, let's assume bufio is still available if needed for the fallback.
+//import "bufio" // Keep this import if you use the fallback
+
+func NewStdinReader() *bufio.Reader {
+	return bufio.NewReader(os.Stdin)
+}
+
 func main() {
 	if len(os.Args) < 2 {
-		// No arguments provided, start interactive mode
 		startInteractiveMode()
 	} else {
-		// Arguments provided, process as CLI command
 		firstArg := strings.ToLower(os.Args[1])
-
 		if firstArg == "help" {
 			topic := ""
 			if len(os.Args) > 2 {
-				// For 'help some topic with spaces', join args after 'help'
 				topic = strings.Join(os.Args[2:], " ")
 			}
 			displayHelp(topic)
 		} else {
-			// If the first argument is not 'help', assume all arguments from index 1 onwards
-			// form the expression.
 			expressionString := strings.Join(os.Args[1:], " ")
-
-			// Call calculateExpression and handle error for CLI mode (exit on error)
 			resultStr, err := calculateExpression(expressionString)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1) // Exit for CLI mode on error
+				os.Exit(1)
 			}
 			fmt.Println(resultStr)
 		}
