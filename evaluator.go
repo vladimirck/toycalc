@@ -163,7 +163,8 @@ func EvaluateRPN(rpnQueue []Token) (complex128, error) {
 			// Stage 1 & 2 Functions (all unary for now)
 			case "log", "exp", "sin", "cos", "tan", "asin", "acos", "atan",
 				"sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
-				"log10", "log2", "sqrt":
+				"log10", "log2", "sqrt", "real", "imag", "abs", "phase",
+				"conj", "degtorad", "radtodeg", "floor", "ceil", "round", "trunc":
 				if len(operandStack) < 1 {
 					return complex(math.NaN(), math.NaN()), NewCalculationError(
 						fmt.Sprintf("insufficient operands for function '%s' at position %d (expected 1)",
@@ -208,7 +209,30 @@ func EvaluateRPN(rpnQueue []Token) (complex128, error) {
 					result = cmplx.Log(arg1) / cmplx.Log(complex(2, 0))
 				case "sqrt":
 					result = cmplx.Sqrt(arg1)
+				case "real":
+					result = complex(real(arg1), 0.0)
+				case "imag":
+					result = complex(imag(arg1), 0.0)
+				case "abs":
+					result = complex(cmplx.Abs(arg1), 0.0)
+				case "phase":
+					result = complex(cmplx.Phase(arg1), 0.0)
+				case "conj":
+					result = cmplx.Conj(arg1)
+				case "degtorad":
+					result = arg1 * complex(math.Pi/180.0, 0.0)
+				case "radtodeg":
+					result = arg1 * complex(180.0/math.Pi, 0.0)
+				case "floor":
+					result = complex(math.Floor(real(arg1)), math.Floor(imag(arg1)))
+				case "ceil":
+					result = complex(math.Ceil(real(arg1)), math.Ceil(imag(arg1)))
+				case "trunc":
+					result = complex(math.Trunc(real(arg1)), math.Trunc(imag(arg1)))
+				case "round":
+					result = complex(math.Round(real(arg1)), math.Round(imag(arg1)))
 				}
+
 				operandStack = append(operandStack, result)
 				processed = true
 			} // End inner switch for function/constant names

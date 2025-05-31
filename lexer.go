@@ -110,11 +110,11 @@ func (l *Lexer) skipWhitespace() {
 // readIdentifier reads in an identifier and advances the lexer's position until it
 // encounters a non-letter character.
 func (l *Lexer) readIdentifier() string {
-	position := l.position
-	for isLetter(l.ch) { // For now, identifiers are only letters
+	startPosition := l.position
+	for isLetter(l.ch) || (l.position != startPosition && isDigit(l.ch)) {
 		l.readChar()
 	}
-	return l.input[position:l.position]
+	return l.input[startPosition:l.position]
 }
 
 // readNumber reads in a number (integer or float) and advances the lexer's position.

@@ -7,6 +7,27 @@ import (
 	// "strconv"
 )
 
+// Constants for known identifiers (used for implied multiplication logic and IDENT handling)
+// These maps should be kept in sync with what the evaluator can handle.
+var (
+	knownConstants = map[string]bool{
+		"i":  true,
+		"pi": true,
+		"e":  true,
+	}
+	knownFunctions = map[string]bool{ // Stage 1 & 2 functions
+		"log": true, "exp": true,
+		"sin": true, "cos": true, "tan": true,
+		"asin": true, "acos": true, "atan": true,
+		"sinh": true, "cosh": true, "tanh": true,
+		"asinh": true, "acosh": true, "atanh": true,
+		"log10": true, "log2": true, "sqrt": true,
+		"real": true, "imag": true, "abs": true, "phase": true, "conj": true,
+		"degtorad": true, "radtodeg": true,
+		"floor": true, "ceil": true, "round": true, "trunc": true,
+	}
+)
+
 type Parser struct {
 	tokens       []Token
 	currentIndex int
@@ -143,6 +164,58 @@ func (p *Parser) ParseToRPN() ([]Token, error) {
 	currentToken := p.consumeToken() // Get the first token
 
 	for currentToken.Type != EOF {
+
+		// --- Start of Implied Multiplication Logic ---
+		if !p.expectOperand { // An operator is expected
+			isOperandStarter := false
+			switch currentToken.Type {
+			case NUMBER, LPAREN, LBRACKET, LBRACE:
+				isOperandStarter = true
+			case IDENT:
+				// An IDENT can start an operand if it's a constant or a function call
+				lowerLiteral := strings.ToLower(currentToken.Literal)
+				if _, isConst := knownConstants[lowerLiteral]; isConst {
+					isOperandStarter = true
+				} else if _, isFunc := knownFunctions[lowerLiteral]; isFunc {
+					isOperandStarter = true // e.g. (1+2)log(x)
+				}
+			}
+
+			// If an operand starter appears where an operator is expected,
+			// AND it's not a PLUS/MINUS (which have their own unary handling),
+			// then insert an implicit multiplication.
+			if isOperandStarter && currentToken.Type != PLUS && currentToken.Type != MINUS {
+				implicitAsterisk := Token{Type: ASTERISK, Literal: "*", Position: currentToken.Position} // Use pos of the token that implies mult
+
+				// Process this virtual ASTERISK token using Shunting-Yard logic
+				op1Implicit := implicitAsterisk
+				for {
+					op2Stack, ok := p.peekOperator()
+					if !ok || isLeftParen(op2Stack.Type) {
+						break
+					}
+					if (p.leftAssociative[op1Implicit.Type] && p.precedence[op1Implicit.Type] <= p.precedence[op2Stack.Type]) ||
+						(!p.leftAssociative[op1Implicit.Type] && p.precedence[op1Implicit.Type] < p.precedence[op2Stack.Type]) {
+						poppedOp, _ := p.popOperator()
+						p.outputQueue = append(p.outputQueue, poppedOp)
+					} else {
+						break
+					}
+				}
+				p.pushOperator(op1Implicit)
+				p.expectOperand = true // After the implicit '*', we now expect an operand
+
+				// DO NOT advance p.currentIndex here. The currentToken (e.g., LPAREN or IDENT)
+				// still needs to be processed by the main switch in the *same* loop iteration
+				// but now p.expectOperand is true.
+				// The loop will re-evaluate the same currentToken. This needs careful loop control.
+
+				// To achieve "re-evaluation" of currentToken with the new expectOperand state:
+				// We simply let the loop continue. The currentToken for the switch below
+				// will be the one that triggered the implicit multiplication.
+			}
+		}
+
 		switch currentToken.Type {
 		case NUMBER:
 			if !p.expectOperand {
@@ -166,7 +239,8 @@ func (p *Parser) ParseToRPN() ([]Token, error) {
 			case "log", "exp", // Stage 1 functions
 				"sin", "cos", "tan", "asin", "acos", "atan", // Stage 2 trig
 				"sinh", "cosh", "tanh", "asinh", "acosh", "atanh", // Stage 2 hyperbolic
-				"log10", "log2", "sqrt": // Stage 2 other
+				"log10", "log2", "sqrt", "real", "imag", "abs", "phase",
+				"conj", "degtorad", "radtodeg", "floor", "ceil", "round", "trunc": // Stage 2 other
 				isKnownFunction = true
 			}
 

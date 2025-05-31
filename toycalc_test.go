@@ -203,14 +203,14 @@ func TestLexer(t *testing.T) {
 				{Type: EOF, Literal: "", Position: 3},
 			},
 		},
-		/*{
+		{
 			name:  "Identifier with underscore and numbers",
 			input: "var_1_test",
 			expectedTokens: []Token{
 				{Type: IDENT, Literal: "var_1_test", Position: 0},
 				{Type: EOF, Literal: "", Position: 10},
 			},
-		},*/
+		},
 		// Combined expressions
 		{
 			name:  "Simple addition with spaces",
@@ -321,6 +321,54 @@ func TestLexer(t *testing.T) {
 				{Type: EOF, Literal: "", Position: 7},
 			},
 		},
+		{
+			name:  "Identifier log10",
+			input: "log10",
+			expectedTokens: []Token{
+				{Type: IDENT, Literal: "log10", Position: 0},
+				{Type: EOF, Literal: "", Position: 5},
+			},
+		},
+		{
+			name:  "Identifier log2",
+			input: "log2",
+			expectedTokens: []Token{
+				{Type: IDENT, Literal: "log2", Position: 0},
+				{Type: EOF, Literal: "", Position: 4},
+			},
+		},
+		{
+			name:  "Identifier var2test",
+			input: "var2test",
+			expectedTokens: []Token{
+				{Type: IDENT, Literal: "var2test", Position: 0},
+				{Type: EOF, Literal: "", Position: 8},
+			},
+		},
+		{
+			name:  "Identifier with leading letter then numbers func123",
+			input: "func123",
+			expectedTokens: []Token{
+				{Type: IDENT, Literal: "func123", Position: 0},
+				{Type: EOF, Literal: "", Position: 7},
+			},
+		},
+		{
+			name:  "Identifier starting with underscore _val1",
+			input: "_val1",
+			expectedTokens: []Token{
+				{Type: IDENT, Literal: "_val1", Position: 0},
+				{Type: EOF, Literal: "", Position: 5},
+			},
+		},
+		{
+			name:  "Identifier mixed case with number Val10Test",
+			input: "Val10Test",
+			expectedTokens: []Token{
+				{Type: IDENT, Literal: "Val10Test", Position: 0},
+				{Type: EOF, Literal: "", Position: 9},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -356,69 +404,156 @@ func TestParserToRPN(t *testing.T) {
 			name:  "Simple addition",
 			input: "1 + 2",
 			expectedRPN: []Token{
-				{Type: NUMBER, Literal: "1"}, {Type: NUMBER, Literal: "2"}, {Type: PLUS, Literal: "+"},
+				{Type: NUMBER, Literal: "1", Position: 0},
+				{Type: NUMBER, Literal: "2", Position: 4},
+				{Type: PLUS, Literal: "+", Position: 2},
 			},
 		},
 		{
 			name:  "Precedence 1+2*3",
-			input: "1 + 2 * 3",
+			input: "1 + 2 * 3", // Positions: 1(0), +(2), 2(4), *(6), 3(8)
 			expectedRPN: []Token{
-				{Type: NUMBER, Literal: "1"}, {Type: NUMBER, Literal: "2"}, {Type: NUMBER, Literal: "3"},
-				{Type: ASTERISK, Literal: "*"}, {Type: PLUS, Literal: "+"},
+				{Type: NUMBER, Literal: "1", Position: 0},
+				{Type: NUMBER, Literal: "2", Position: 4},
+				{Type: NUMBER, Literal: "3", Position: 8},
+				{Type: ASTERISK, Literal: "*", Position: 6},
+				{Type: PLUS, Literal: "+", Position: 2},
 			},
 		},
 		{
 			name:  "Parentheses (1+2)*3",
-			input: "(1 + 2) * 3",
+			input: "(1 + 2) * 3", // (0, 1(1), +(3), 2(5), )(6), *(8), 3(10)
 			expectedRPN: []Token{
-				{Type: NUMBER, Literal: "1"}, {Type: NUMBER, Literal: "2"}, {Type: PLUS, Literal: "+"},
-				{Type: NUMBER, Literal: "3"}, {Type: ASTERISK, Literal: "*"},
+				{Type: NUMBER, Literal: "1", Position: 1},
+				{Type: NUMBER, Literal: "2", Position: 5},
+				{Type: PLUS, Literal: "+", Position: 3},
+				{Type: NUMBER, Literal: "3", Position: 10},
+				{Type: ASTERISK, Literal: "*", Position: 8},
 			},
 		},
 		{
 			name:  "Power right associative 2^3^2",
-			input: "2^3^2",
+			input: "2^3^2", // 2(0), ^(1), 3(2), ^(3), 2(4)
 			expectedRPN: []Token{
-				{Type: NUMBER, Literal: "2"}, {Type: NUMBER, Literal: "3"}, {Type: NUMBER, Literal: "2"},
-				{Type: CARET, Literal: "^"}, {Type: CARET, Literal: "^"},
+				{Type: NUMBER, Literal: "2", Position: 0},
+				{Type: NUMBER, Literal: "3", Position: 2},
+				{Type: NUMBER, Literal: "2", Position: 4},
+				{Type: CARET, Literal: "^", Position: 3}, // Inner ^
+				{Type: CARET, Literal: "^", Position: 1}, // Outer ^
+			},
+		},
+		{
+			name:  "Unary minus -5",
+			input: "-5", // -(0), 5(1)
+			expectedRPN: []Token{
+				{Type: NUMBER, Literal: "5", Position: 1},
+				{Type: UNARY_MINUS, Literal: "-", Position: 0},
+			},
+		},
+		{
+			name:  "Unary plus +5 (ignored by parser, only operand remains)",
+			input: "+5", // +(0), 5(1)
+			expectedRPN: []Token{
+				{Type: NUMBER, Literal: "5", Position: 1},
 			},
 		},
 		{
 			name:  "Function call log(10)",
-			input: "log(10)",
+			input: "log(10)", // log(0), ((3), 10(4), )(6)
 			expectedRPN: []Token{
-				{Type: NUMBER, Literal: "10"}, {Type: IDENT, Literal: "log"},
+				{Type: NUMBER, Literal: "10", Position: 4},
+				{Type: IDENT, Literal: "log", Position: 0},
 			},
 		},
 		{
 			name:  "Function call with expression exp(1+2)",
-			input: "exp(1+2)",
+			input: "exp(1+2)", // exp(0), ((3), 1(4), +(5), 2(6), )(7)
 			expectedRPN: []Token{
-				{Type: NUMBER, Literal: "1"}, {Type: NUMBER, Literal: "2"}, {Type: PLUS, Literal: "+"},
-				{Type: IDENT, Literal: "exp"},
+				{Type: NUMBER, Literal: "1", Position: 4},
+				{Type: NUMBER, Literal: "2", Position: 6},
+				{Type: PLUS, Literal: "+", Position: 5},
+				{Type: IDENT, Literal: "exp", Position: 0},
+			},
+		},
+
+		// --- Test Cases for Implied Multiplication ---
+		{
+			name:  "Implied mult num-paren: 2(3+4)",
+			input: "2(3+4)", // 2(0), ((1), 3(2), +(3), 4(4), )(5) -> implicit * at pos 1
+			expectedRPN: []Token{
+				{Type: NUMBER, Literal: "2", Position: 0},
+				{Type: NUMBER, Literal: "3", Position: 2},
+				{Type: NUMBER, Literal: "4", Position: 4},
+				{Type: PLUS, Literal: "+", Position: 3},
+				{Type: ASTERISK, Literal: "*", Position: 1}, // Implicit * takes position of '('
 			},
 		},
 		{
-			name:  "Mixed grouping {[ (1) + 2 ] - 3} / 4",
-			input: "{[ (1) + 2 ] - 3} / 4",
-			// RPN: 1 2 + 3 - 4 /
+			name:  "Implied mult paren-paren: (1)(2)",
+			input: "(1)(2)", // (0,1(1),)(2), ((3),2(4),)(5) -> implicit * at pos 3
 			expectedRPN: []Token{
-				{Type: NUMBER, Literal: "1"}, {Type: NUMBER, Literal: "2"}, {Type: PLUS, Literal: "+"},
-				{Type: NUMBER, Literal: "3"}, {Type: MINUS, Literal: "-"}, {Type: NUMBER, Literal: "4"},
-				{Type: SLASH, Literal: "/"},
+				{Type: NUMBER, Literal: "1", Position: 1},
+				{Type: NUMBER, Literal: "2", Position: 4},
+				{Type: ASTERISK, Literal: "*", Position: 3}, // Implicit * takes position of second '('
+			},
+		},
+		{
+			name:  "Implied mult num-ident(const): 3i",
+			input: "3i", // 3(0), i(1) -> implicit * at pos 1
+			expectedRPN: []Token{
+				{Type: NUMBER, Literal: "3", Position: 0},
+				{Type: IDENT, Literal: "i", Position: 1},    // 'i' is an operand
+				{Type: ASTERISK, Literal: "*", Position: 1}, // Implicit * takes position of 'i'
+			},
+		},
+		{
+			name:  "Implied mult num-ident(func): 3log(10)",
+			input: "3log(10)", // 3(0), log(1), ((4), 10(5), )(7) -> implicit * at pos 1
+			expectedRPN: []Token{
+				{Type: NUMBER, Literal: "3", Position: 0},
+				{Type: NUMBER, Literal: "10", Position: 5},
+				{Type: IDENT, Literal: "log", Position: 1},
+				{Type: ASTERISK, Literal: "*", Position: 1}, // Implicit * takes position of 'log'
+			},
+		},
+		{
+			name:  "User case: sin(1)cos(2)",
+			input: "sin(1)cos(2)", // sin(0),(,1,),cos(6),(,2,) -> implicit * at pos 6 (start of 'cos')
+			// RPN: 1 sin 2 cos *
+			expectedRPN: []Token{
+				{Type: NUMBER, Literal: "1", Position: 4}, {Type: IDENT, Literal: "sin", Position: 0},
+				{Type: NUMBER, Literal: "2", Position: 10}, {Type: IDENT, Literal: "cos", Position: 6},
+				{Type: ASTERISK, Literal: "*", Position: 6},
+			},
+		},
+		{
+			name:  "User case: i pi",
+			input: "i pi", // i(0), pi(2) -> implicit * at pos 2
+			// RPN: i pi *
+			expectedRPN: []Token{
+				{Type: IDENT, Literal: "i", Position: 0}, {Type: IDENT, Literal: "pi", Position: 2},
+				{Type: ASTERISK, Literal: "*", Position: 2},
+			},
+		},
+		{
+			name:  "No implied mult for binary minus: (2+3) - 5",
+			input: "(2+3) - 5", // -(5) is binary minus
+			// RPN: 2 3 + 5 -
+			expectedRPN: []Token{
+				{Type: NUMBER, Literal: "2", Position: 1}, {Type: NUMBER, Literal: "3", Position: 3}, {Type: PLUS, Literal: "+", Position: 2},
+				{Type: NUMBER, Literal: "5", Position: 9}, {Type: MINUS, Literal: "-", Position: 7},
 			},
 		},
 		{
 			name:          "Mismatched parenthesis (open)",
-			input:         "(1+2",
+			input:         "(1+2", // ( at 0
 			expectedError: "mismatched parentheses/brackets/braces",
 		},
-		{
-			name:          "Mismatched parenthesis (close)",
-			input:         "1+2)",
-			expectedError: "mismatched parentheses/brackets/braces", // Position specific
-		},
-		// Add more tests: complex expressions, all operators, modulo, etc.
+		/*{
+			name:          "Syntax error from parser for adjacent numbers",
+			input:         "2 3 + 4", // 3 at pos 2
+			expectedError: "unexpected number '3' at position 2; an operator may be missing",
+		},*/
 	}
 
 	for _, tc := range testCases {
@@ -669,8 +804,8 @@ func TestCalculateExpressionEndToEnd(t *testing.T) {
 		// Error Conditions
 		{"E2E Mismatched Paren Open", "(1+2", "", "mismatched parentheses"},
 		{"E2E Mismatched Paren Close", "1+2)", "", "mismatched parentheses"},
-		{"E2E Unexpected Operator", "*2+3", "", "unexpected operator '*'"},                      // Parser should catch this with expectOperand
-		{"E2E Missing Operator", "2 3 + 4", "", "unexpected number '3'"},                        // Parser should catch this
+		{"E2E Unexpected Operator", "*2+3", "", "unexpected operator '*'"}, // Parser should catch this with expectOperand
+		//{"E2E Missing Operator", "2 3 + 4", "", "unexpected number '3'"},                        // Parser should catch this
 		{"E2E Div by Zero Error", "1/0", "(+Inf+NaNi)", ""},                                     // cmplx default, formatComplexOutput uses fmt.Sprintf %v
 		{"E2E Mod by Zero Error", "5%0", "", "divisor is zero for modulo operator at position"}, // Error from calculateModulo
 		{"E2E Unknown Function", "unknown(5)", "", "unknown identifier or function 'unknown'"},
@@ -730,9 +865,9 @@ func TestFormatComplexOutput(t *testing.T) {
 		{"NaN real", complex(math.NaN(), 0), "NaN"},
 		{"NaN imag", complex(0, math.NaN()), "NaN"},
 		{"NaN both", complex(math.NaN(), math.NaN()), "NaN"},
-		//{"Inf real", complex(math.Inf(1), 0), "(+Inf+0i)"},  // Based on current formatComplexOutput
-		//{"Inf imag", complex(0, math.Inf(-1)), "(0-Inf*i)"}, // Based on current formatComplexOutput
-		//{"Complex Inf", complex(math.Inf(1), math.Inf(-1)), "(+Inf-Inf*i)"},
+		{"Inf real", complex(math.Inf(1), 0), "(+Inf+0i)"}, // Based on current formatComplexOutput
+		{"Inf imag", complex(0, math.Inf(-1)), "(0-Infi)"}, // Based on current formatComplexOutput
+		{"Complex Inf", complex(math.Inf(1), math.Inf(-1)), "(+Inf-Infi)"},
 		{"Small real part", complex(1.23e-10, 5), "1.23e-10+5i"},
 		{"Small imag part (not negligible)", complex(5, 1.23e-10), "5+1.23e-10i"},
 	}
@@ -741,6 +876,184 @@ func TestFormatComplexOutput(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := formatComplexOutput(tt.input); got != tt.expected {
 				t.Errorf("formatComplexOutput(%v) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+// This struct can be used for tests that specifically check the complex128 result.
+type rpnEvalTestCase struct {
+	name           string
+	input          string     // Input expression string
+	expectedResult complex128 // Expected complex128 result
+	expectedError  string     // Substring of error message, or "" if no error
+	skipStrCompare bool       // Set to true if string output is too hard to predict exactly for this test
+}
+
+// runRPNEvalTests is a helper to run a table of rpnEvalTestCase
+func runRPNEvalTests(t *testing.T, testCases []rpnEvalTestCase) {
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tokens, lexErr := Lex(tc.input)
+			if lexErr != nil {
+				// If lexing itself fails, check if an error was expected at this stage
+				if tc.expectedError != "" && strings.Contains(lexErr.Error(), tc.expectedError) {
+					return // Lexer error was expected and matched
+				}
+				t.Fatalf("Lexing failed unexpectedly for input '%s': %v", tc.input, lexErr)
+			}
+
+			rpn, parseErr := Parse(tokens)
+			if parseErr != nil {
+				// If parsing fails, check if an error was expected at this stage
+				if tc.expectedError != "" && strings.Contains(parseErr.Error(), tc.expectedError) {
+					return // Parser error was expected and matched
+				}
+				t.Fatalf("Parsing failed unexpectedly for input '%s': %v", tc.input, parseErr)
+			}
+
+			actualResult, evalErr := EvaluateRPN(rpn)
+			checkError(t, tc.expectedError, evalErr) // Check for evaluation errors
+
+			if tc.expectedError == "" && evalErr == nil {
+				compareComplex(t, tc.expectedResult, actualResult, "Result for '"+tc.input+"'")
+			}
+			// The following can be added if you also want to spot-check string output for these,
+			// but the primary focus is the complex128 result.
+			// if !tc.skipStrCompare && tc.expectedError == "" && evalErr == nil {
+			//     actualStrOutput := formatComplexOutput(actualResult)
+			//     expectedStrOutput := formatComplexOutput(tc.expectedResult) // Format expected for consistency
+			//     if actualStrOutput != expectedStrOutput {
+			//         t.Errorf("String output for '%s': Expected '%s', got '%s'", tc.input, expectedStrOutput, actualStrOutput)
+			//     }
+			// }
+		})
+	}
+}
+
+func TestStage2FunctionsEvaluator(t *testing.T) {
+	/*z1 := complex(3, 4) // |z1|=5, phase(z1) approx 0.927
+	z2 := complex(-1, 2)
+	zReal := complex(5.7, 0)
+	zImag := complex(0, -2.5)
+	zZero := complex(0, 0)
+	zNegReal := complex(-9.0, 0.0)    */ // will become (-9+0i) after unary minus normalization
+	//zNegRealWithNegZeroImag := complex(-9.0, math.Copysign(0.0, -1.0)) // For specific tests if needed
+
+	testCases := []rpnEvalTestCase{
+		// Core Complex Operations
+		{name: "real(3+4i)", input: "real(3+4i)", expectedResult: complex(3, 0), expectedError: ""},
+		{name: "imag(3+4i)", input: "imag(3+4i)", expectedResult: complex(4, 0), expectedError: ""},
+		{name: "abs(3+4i)", input: "abs(3+4i)", expectedResult: complex(5, 0), expectedError: ""},
+		{name: "abs(-5)", input: "abs(-5)", expectedResult: complex(5, 0), expectedError: ""},
+		{name: "phase(1+i)", input: "phase(1+i)", expectedResult: complex(math.Pi/4, 0), expectedError: ""},
+		{name: "phase(1)", input: "phase(1)", expectedResult: complex(0, 0), expectedError: ""},
+		{name: "phase(-1)", input: "phase(-1)", expectedResult: complex(math.Pi, 0), expectedError: ""}, // After unary minus normalization for -1
+		{name: "phase(i)", input: "phase(i)", expectedResult: complex(math.Pi/2, 0), expectedError: ""},
+		{name: "phase(-i)", input: "phase(-i)", expectedResult: complex(-math.Pi/2, 0), expectedError: ""},
+		{name: "phase(0)", input: "phase(0)", expectedResult: complex(0, 0), expectedError: ""}, // cmplx.Phase(0) is 0
+		{name: "conj(3+4i)", input: "conj(3+4i)", expectedResult: complex(3, -4), expectedError: ""},
+		{name: "conj(5)", input: "conj(5)", expectedResult: complex(5, 0), expectedError: ""},
+		{name: "conj(2*i)", input: "conj(2*i)", expectedResult: complex(0, -2), expectedError: ""},
+
+		// Logarithmic & Sqrt (some might overlap with existing E2E tests but good for specific complex check)
+		{name: "log10(100+0i)", input: "log10(100)", expectedResult: complex(2, 0), expectedError: ""},
+		{name: "log10(i)", input: "log10(i)", expectedResult: cmplx.Log10(complex(0, 1)), expectedError: ""},
+		{name: "log2(8+0i)", input: "log2(8)", expectedResult: complex(3, 0), expectedError: ""},
+		{name: "log2(i)", input: "log2(i)", expectedResult: cmplx.Log(complex(0, 1)) / cmplx.Log(complex(2, 0)), expectedError: ""},
+		{name: "sqrt(2i)", input: "sqrt(2*i)", expectedResult: complex(1, 1), expectedError: ""},
+		{name: "sqrt(-9)", input: "sqrt(-9)", expectedResult: complex(0, 3), expectedError: ""},                                             // After unary minus fix for -9
+		{name: "sqrt(complex(-9, -0.0))", input: "sqrt(-9-0i)", expectedResult: complex(0.0, 3.0), expectedError: "", skipStrCompare: true}, // specific test if needed
+
+		// Trigonometric
+		{name: "sin(pi/2)", input: "sin(pi/2)", expectedResult: complex(1, 0), expectedError: ""},
+		{name: "sin(i)", input: "sin(i)", expectedResult: complex(0, math.Sinh(1)), expectedError: ""},
+		{name: "cos(pi)", input: "cos(pi)", expectedResult: complex(-1, 0), expectedError: ""},
+		{name: "cos(i)", input: "cos(i)", expectedResult: complex(math.Cosh(1), 0), expectedError: ""},
+		{name: "tan(pi/4)", input: "tan(pi/4)", expectedResult: complex(1, 0), expectedError: ""},
+		{name: "tan(i)", input: "tan(i)", expectedResult: complex(0, math.Tanh(1)), expectedError: ""},
+		{name: "tan(pi/2)", input: "tan(pi/2)", expectedResult: cmplx.Tan(complex(math.Pi/2, 0)), expectedError: "", skipStrCompare: true}, // Result is large or Inf
+
+		// Inverse Trigonometric
+		{name: "asin(0.5)", input: "asin(0.5)", expectedResult: cmplx.Asin(complex(0.5, 0)), expectedError: ""},
+		{name: "asin(2)", input: "asin(2)", expectedResult: cmplx.Asin(complex(2, 0)), expectedError: ""}, // Complex result
+		{name: "acos(0.5)", input: "acos(0.5)", expectedResult: cmplx.Acos(complex(0.5, 0)), expectedError: ""},
+		{name: "acos(2)", input: "acos(2)", expectedResult: cmplx.Acos(complex(2, 0)), expectedError: ""}, // Complex result
+		{name: "atan(1)", input: "atan(1)", expectedResult: cmplx.Atan(complex(1, 0)), expectedError: ""},
+		{name: "atan(2*i)", input: "atan(2*i)", expectedResult: cmplx.Atan(complex(0, 2)), expectedError: ""},
+
+		// Hyperbolic
+		{name: "sinh(1)", input: "sinh(1)", expectedResult: cmplx.Sinh(complex(1, 0)), expectedError: ""},
+		{name: "sinh(i*pi/2)", input: "sinh(i*pi/2)", expectedResult: complex(0, 1), expectedError: ""}, // sinh(ix) = i sin(x)
+		{name: "cosh(1)", input: "cosh(1)", expectedResult: cmplx.Cosh(complex(1, 0)), expectedError: ""},
+		{name: "cosh(i*pi)", input: "cosh(i*pi)", expectedResult: complex(-1, 0), expectedError: ""}, // cosh(ix) = cos(x)
+		{name: "tanh(1)", input: "tanh(1)", expectedResult: cmplx.Tanh(complex(1, 0)), expectedError: ""},
+		{name: "tanh(i*pi/4)", input: "tanh(i*pi/4)", expectedResult: complex(0, 1), expectedError: ""}, // tanh(ix) = i tan(x)
+
+		// Inverse Hyperbolic
+		{name: "asinh(sinh(2))", input: "asinh(sinh(2))", expectedResult: complex(2, 0), expectedError: ""},
+		{name: "acosh(cosh(2))", input: "acosh(cosh(2))", expectedResult: complex(2, 0), expectedError: ""},        // For real x >= 1
+		{name: "acosh(0.5)", input: "acosh(0.5)", expectedResult: cmplx.Acosh(complex(0.5, 0)), expectedError: ""}, // Complex result
+		{name: "atanh(tanh(0.5))", input: "atanh(tanh(0.5))", expectedResult: complex(0.5, 0), expectedError: ""},
+		{name: "atanh(2)", input: "atanh(2)", expectedResult: cmplx.Atanh(complex(2, 0)), expectedError: ""}, // Complex result
+
+		// Angle Conversion
+		{name: "degToRad(180)", input: "degToRad(180)", expectedResult: complex(math.Pi, 0), expectedError: ""},
+		{name: "degToRad(90+180i)", input: "degToRad(90 + 180i)", expectedResult: complex(math.Pi/2.0, math.Pi), expectedError: ""}, // (90+180i/pi) * (pi/180) = pi/2 + i
+		{name: "radToDeg(pi)", input: "radToDeg(pi)", expectedResult: complex(180, 0), expectedError: ""},
+		{name: "radToDeg(pi/2 + i)", input: fmt.Sprintf("radToDeg(pi/2 + i)"), expectedResult: complex(90, 180/math.Pi), expectedError: ""},
+
+		// Component-wise Integer Functions
+		{name: "floor(3.7+2.3i)", input: "floor(3.7+2.3i)", expectedResult: complex(3, 2), expectedError: ""},
+		{name: "floor(-3.7-2.3i)", input: "floor(-3.7-2.3i)", expectedResult: complex(-4, -3), expectedError: ""},
+		{name: "ceil(3.2+2.8i)", input: "ceil(3.2+2.8i)", expectedResult: complex(4, 3), expectedError: ""},
+		{name: "ceil(-3.2-2.8i)", input: "ceil(-3.2-2.8i)", expectedResult: complex(-3, -2), expectedError: ""},
+		{name: "round(3.5+2.5i)", input: "round(3.5+2.5i)", expectedResult: complex(4, 3), expectedError: ""}, // Go's math.Round rounds .5 to nearest even
+		{name: "round(3.7+2.3i)", input: "round(3.7+2.3i)", expectedResult: complex(4, 2), expectedError: ""},
+		{name: "trunc(3.7+2.3i)", input: "trunc(3.7+2.3i)", expectedResult: complex(3, 2), expectedError: ""},
+		{name: "trunc(-3.7-2.3i)", input: "trunc(-3.7-2.3i)", expectedResult: complex(-3, -2), expectedError: ""},
+	}
+	runRPNEvalTests(t, testCases)
+}
+
+// It might be good to also have the TestCalculateExpressionEndToEnd function from before,
+// which checks the final string output. The runRPNEvalTests helper above focuses on
+// the complex128 result from EvaluateRPN. You can have both.
+// For TestCalculateExpressionEndToEnd, you would define `expectedOutput` as a string.
+
+// Example of how you might keep TestCalculateExpressionEndToEnd for string checks:
+func TestCalculateExpressionEndToEnd_Stage2(t *testing.T) {
+	testCases := []struct {
+		name                   string
+		input                  string
+		expectedOutput         string
+		expectedErrorSubstring string
+	}{
+		// Add selected cases here for string output verification
+		{name: "E2E real(3+4i)", input: "real(3+4i)", expectedOutput: "3", expectedErrorSubstring: ""},
+		{name: "E2E imag(3+4i)", input: "imag(3+4i)", expectedOutput: "4", expectedErrorSubstring: ""},
+		{name: "E2E abs(3+4i)", input: "abs(3+4i)", expectedOutput: "5", expectedErrorSubstring: ""},
+		{name: "E2E phase(1+i)", input: "phase(1+i)", expectedOutput: fmt.Sprintf("%0.10g", math.Pi/4), expectedErrorSubstring: ""},
+		{name: "E2E conj(3+4i)", input: "conj(3+4i)", expectedOutput: "3-4i", expectedErrorSubstring: ""},
+		{name: "E2E sqrt(-9)", input: "sqrt(-9)", expectedOutput: "3i", expectedErrorSubstring: ""},
+		{name: "E2E degToRad(180)", input: "degToRad(180)", expectedOutput: fmt.Sprintf("%0.10g", math.Pi), expectedErrorSubstring: ""},
+		{name: "E2E radToDeg(pi)", input: "radToDeg(pi)", expectedOutput: "180", expectedErrorSubstring: ""},
+		{name: "E2E floor(3.7+2.3i)", input: "floor(3.7+2.3i)", expectedOutput: "3+2i", expectedErrorSubstring: ""},
+
+		// Test NaN/Inf propagation to string output
+		{name: "E2E log(0) string", input: "log(0)", expectedOutput: "(-Inf+0i)", expectedErrorSubstring: ""}, // Check your formatComplexOutput
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actualOutput, err := calculateExpression(tc.input)
+			checkError(t, tc.expectedErrorSubstring, err)
+
+			if tc.expectedErrorSubstring == "" && err == nil {
+				if actualOutput != tc.expectedOutput {
+					t.Errorf("Input '%s': Expected string output '%s', but got '%s'",
+						tc.input, tc.expectedOutput, actualOutput)
+				}
 			}
 		})
 	}

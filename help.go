@@ -21,16 +21,16 @@ var helpTopics = map[string]string{
 	"general": "ToyCalc is a command-line and interactive calculator that works with complex numbers.\n" +
 		"All calculations use complex128 arithmetic. Results with a negligible imaginary part\n" +
 		"(near zero) are displayed as real numbers. Pure imaginary numbers are shown like '2i' or '-3.5i'.\n\n" +
-		"Supported features in this version (Stage 1):\n" +
+		"Supported features include:\n" + // Changed heading slightly
 		"- Basic arithmetic: +, -, *, /\n" +
 		"- Power: ^\n" +
-		"- Modulo: %\n" +
+		"- Modulo: % (Gaussian integer remainder)\n" +
 		"- Unary plus (+) and minus (-)\n" +
 		"- Grouping: (), [], {}\n" +
-		"- Functions: log(x) (natural), exp(x)\n" +
-		"- Constant: i (imaginary unit, use as 'i', e.g., '5*i')\n\n" +
-		"- Functions: log(x) (natural), exp(x), sin(x), cos(x), etc. (see 'help functions')\n" + // Updated
-		"- Constants: i, pi, e (see 'help constants')\n\n" + // Added
+		"- Constants: i, pi, e (see 'help constants')\n" +
+		"- A wide range of mathematical functions including logarithmic, exponential, trigonometric,\n" +
+		"  hyperbolic, complex component manipulation, angle conversion, and rounding.\n" +
+		"  (Type 'help functions' for a full list).\n\n" +
 		"Type 'help <topic>' for more information on a specific feature (e.g., 'help +', 'help log').",
 
 	"operators": "Supported operators:\n" +
@@ -102,17 +102,17 @@ var helpTopics = map[string]string{
 		"    Example: (1 + 2) * 3\n" +
 		"    Example: {[ (10 - 2) / 4 ] + 1}^2",
 
-	"functions": "Supported functions:\n" + // Updated list
-		"  log(x)   : Natural logarithm (base e), principal value.\n" +
-		"  exp(x)   : Exponential function (e^x).\n" +
-		"  sin(x), cos(x), tan(x): Trigonometric functions (x in radians).\n" +
-		"  asin(x), acos(x), atan(x), atan2(y,x): Inverse trigonometric functions.\n" +
-		"  sinh(x), cosh(x), tanh(x): Hyperbolic functions.\n" +
-		"  asinh(x), acosh(x), atanh(x): Inverse hyperbolic functions.\n" +
-		"  log10(x): Base-10 logarithm.\n" +
-		"  log2(x) : Base-2 logarithm.\n" +
-		"  sqrt(x) : Square root (principal value).\n\n" +
-		"Type 'help <function_name>' for more details.",
+	"functions": "Supported functions (all operate on complex numbers):\n" + // Emphasize complex operation
+		"  Core: real(x), imag(x), abs(x), phase(x), conj(x)\n" +
+		"  Log/Exp: exp(x), log(x) (natural), log10(x), log2(x)\n" +
+		"  Power/Root: sqrt(x) (Note: '^' is the power operator)\n" +
+		"  Trigonometric: sin(x), cos(x), tan(x)\n" +
+		"  Inverse Trig: asin(x), acos(x), atan(x)\n" +
+		"  Hyperbolic: sinh(x), cosh(x), tanh(x)\n" +
+		"  Inverse Hyperbolic: asinh(x), acosh(x), atanh(x)\n" +
+		"  Angle Conversion: degToRad(x), radToDeg(x)\n" +
+		"  Rounding/Truncation: floor(x), ceil(x), round(x), trunc(x)\n\n" +
+		"Type 'help <function_name>' for more details (e.g., 'help sin').",
 
 	"log": "Function: log(x)\n" +
 		"  Calculates the natural logarithm (base e) of the complex number x.\n" +
@@ -232,6 +232,78 @@ var helpTopics = map[string]string{
 		"    Example: sqrt(4)        (Result: 2)\n" +
 		"    Example: sqrt(-1)       (Result: i)\n" + // Output format will show 'i'
 		"    Example: sqrt(2i)       (Result: 1+1i)", // sqrt(2i) = 1+i
+	"real": "Function: real(x)\n" +
+		"  Returns the real part of the complex number x, as a complex number with a zero imaginary part.\n" +
+		"    Example: real(3+4*i)    (Result: 3)\n" +
+		"    Example: real(5)        (Result: 5)\n" +
+		"    Example: real(2*i)      (Result: 0)",
+
+	"imag": "Function: imag(x)\n" +
+		"  Returns the imaginary part of the complex number x, as a complex number with a zero imaginary part.\n" +
+		"  Note: This returns the coefficient of 'i'. For the complex number 'i' itself, use the constant 'i'.\n" +
+		"    Example: imag(3+4*i)    (Result: 4)\n" +
+		"    Example: imag(5)        (Result: 0)\n" +
+		"    Example: imag(2*i)      (Result: 2)",
+
+	"abs": "Function: abs(x)\n" +
+		"  Calculates the absolute value (or modulus/magnitude) of the complex number x.\n" +
+		"  This is a non-negative real number, returned as complex(abs_value, 0).\n" +
+		"    Example: abs(3+4*i)    (Result: 5)\n" +
+		"    Example: abs(-5)       (Result: 5)\n" +
+		"    Example: abs(i)        (Result: 1)",
+
+	"phase": "Function: phase(x)\n" +
+		"  Calculates the argument (or phase/angle) of the complex number x.\n" +
+		"  The result is in radians, in the interval (-π, π].\n" +
+		"  Returned as complex(angle_value, 0).\n" +
+		"    Example: phase(1+i)    (Result: " + fmt.Sprintf("%g", math.Pi/4) + ")\n" +
+		"    Example: phase(-1)     (Result: " + fmt.Sprintf("%g", math.Pi) + ")\n" +
+		"    Example: phase(i)      (Result: " + fmt.Sprintf("%g", math.Pi/2) + ")\n" +
+		"    Example: phase(0)      (Result: 0)",
+
+	"conj": "Function: conj(x)\n" +
+		"  Calculates the complex conjugate of x.\n" +
+		"  If x = a+bi, conj(x) = a-bi.\n" +
+		"    Example: conj(3+4*i)    (Result: 3-4i)\n" +
+		"    Example: conj(5)        (Result: 5)\n" +
+		"    Example: conj(2*i)      (Result: -2i)",
+
+	"degtorad": "Function: degToRad(x)\n" +
+		"  Converts the complex number x from degrees to radians.\n" +
+		"  The entire complex number (both real and imaginary parts) is scaled by π/180.\n" +
+		"    Example: degToRad(180)          (Result: " + fmt.Sprintf("%g", math.Pi) + ")\n" +
+		"    Example: degToRad(90+180*i)  (Result: " + fmt.Sprintf("%g+%gi", math.Pi/2, math.Pi) + ")",
+
+	"radtodeg": "Function: radToDeg(x)\n" +
+		"  Converts the complex number x from radians to degrees.\n" +
+		"  The entire complex number (both real and imaginary parts) is scaled by 180/π.\n" +
+		"    Example: radToDeg(pi)           (Result: 180)\n" +
+		"    Example: radToDeg(pi/2 + i)     (Result: " + fmt.Sprintf("%g+%gi", 90.0, 180.0/math.Pi) + ")",
+
+	"floor": "Function: floor(x)\n" +
+		"  Computes the floor of the complex number x component-wise.\n" +
+		"  Result: complex(math.Floor(real(x)), math.Floor(imag(x)))\n" +
+		"    Example: floor(3.7+2.3*i)   (Result: 3+2i)\n" +
+		"    Example: floor(-3.7-2.3*i)  (Result: -4-3i)",
+
+	"ceil": "Function: ceil(x)\n" +
+		"  Computes the ceiling of the complex number x component-wise.\n" +
+		"  Result: complex(math.Ceil(real(x)), math.Ceil(imag(x)))\n" +
+		"    Example: ceil(3.2+2.8*i)    (Result: 4+3i)\n" +
+		"    Example: ceil(-3.2-2.8*i)   (Result: -3-2i)",
+
+	"round": "Function: round(x)\n" +
+		"  Rounds the complex number x to the nearest integer component-wise.\n" +
+		"  Uses Go's math.Round (rounds half to even).\n" +
+		"  Result: complex(math.Round(real(x)), math.Round(imag(x)))\n" +
+		"    Example: round(3.5+2.5*i)   (Result: 4+2i)\n" +
+		"    Example: round(3.7+2.3*i)   (Result: 4+2i)",
+
+	"trunc": "Function: trunc(x)\n" +
+		"  Truncates the complex number x towards zero component-wise.\n" +
+		"  Result: complex(math.Trunc(real(x)), math.Trunc(imag(x)))\n" +
+		"    Example: trunc(3.7+2.3*i)   (Result: 3+2i)\n" +
+		"    Example: trunc(-3.7-2.3*i)  (Result: -3-2i)",
 }
 
 // displayHelp shows help information.
@@ -241,11 +313,15 @@ func displayHelp(topic string) {
 	topic = strings.ToLower(strings.TrimSpace(topic))
 	availableTopics := []string{
 		"usage", "general", "operators", "unary", "+", "-", "*", "/", "%", "^", "grouping",
-		"functions", "log", "exp", "i", "pi", "e", "constants", "output", // Added pi, e, constants
-		"sin", "cos", "tan", "asin", "acos", "atan", /* atan2 removed */
+		"functions", "constants", "output", "i", "pi", "e",
+		"log", "exp", "sin", "cos", "tan", "asin", "acos", "atan",
 		"sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
 		"log10", "log2", "sqrt",
-	}
+		"real", "imag", "abs", "phase", "conj",
+		"degtorad", "radtodeg",
+		"floor", "ceil", "round", "trunc",
+	} // Ensure all helpTopics keys are listable here if desired for discoverability
+
 	if topic == "" {
 		fmt.Println(helpTopics["general"])
 		fmt.Println("\nAvailable topics (type 'help <topic>'):")

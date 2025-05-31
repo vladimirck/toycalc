@@ -2,28 +2,50 @@
 
 ToyCalc is a versatile calculator written in Go that operates on complex numbers. It provides a command-line interface for quick calculations and an interactive Read-Eval-Print Loop (REPL) for a more engaging experience. All calculations are performed using `complex128` for robust handling of complex arithmetic.
 
-## Current Features (End of Stage 1)
+## Current Features
 
-* **Core Arithmetic:** Supports `+` (addition), `-` (subtraction), `*` (multiplication), `/` (division).
-* **Power Operator:** `^` for exponentiation (e.g., `2^3`, `(-4)^0.5`, `(1+i)^2`). Uses principal values.
-* **Modulo Operator (`%`):** Implemented for complex numbers using the Gaussian integer remainder definition (remainder `r = a - xb`, where `x` is the complex integer closest to `a/b`). This ensures $|r/b| \le 1/\sqrt{2}$.
-* **Unary Operators:**
-    * Unary minus (e.g., `-5`, `-(1+2i)`). Correctly handles sign for principal value calculations (e.g., `(-4)^0.5` results in `2i`).
-    * Unary plus (e.g., `+5`) is recognized but has no operational effect.
-* **Grouping Symbols:** Supports `()`, `[]`, and `{}` interchangeably for grouping expressions.
-* **Basic Functions:**
-    * `log(x)`: Natural logarithm (principal value, works for complex `x`).
-    * `exp(x)`: Exponential function $e^x$ (works for complex `x`).
-* **Imaginary Unit `i`:** The constant `i` is recognized as `complex(0, 1)`.
-* **Complex Number Backend:** All calculations internally use Go's `complex128` type.
+* **Core Arithmetic:** `+`, `-`, `*`, `/`.
+* **Power Operator:** `^` (principal value).
+* **Modulo Operator (`%`):** Gaussian integer remainder definition.
+* **Unary Operators:** `+` (no-op), `-` (negation, handles sign for principal values, e.g., `(-4)^0.5` is `2i`).
+* **Implied Multiplication:** Supports common cases like `2(3+4)`, `(1+2)(3+4)`, `3i`, `2log(x)`, `sin(pi)cos(pi)`.
+* **Grouping Symbols:** `()`, `[]`, `{}` (interchangeable).
+* **Constants:**
+    * `i` (imaginary unit).
+    * `pi` (mathematical constant $\pi$).
+    * `e` (Euler's number).
+* **Complex Number Backend:** All calculations use Go's `complex128`.
 * **Output Formatting:**
-    * Results are displayed as real numbers if the imaginary part is negligible (close to zero within a defined epsilon).
-    * Otherwise, full complex numbers are displayed (e.g., `3+2i`, `-1-0.5i`).
-    * Handles `NaN` and `Infinity` display.
+    * Real numbers shown if imaginary part is negligible.
+    * Pure imaginary numbers shown as `Ni` (e.g., `2i`, `-3.5i`).
+    * Whole numbers formatted without unnecessary decimals.
+    * Handles `NaN` and `Infinity`.
 * **Two Modes of Operation:**
     1.  **Command-Line (CLI):** Evaluate expressions directly.
-    2.  **Interactive (REPL):** Start `toycalc` without arguments to enter an interactive session.
-* **Integrated Help System:** Basic help available via `toycalc help` or `help [topic]` in REPL.
+    2.  **Interactive (REPL):** With line editing and persistent command history (`~/.toycalc_history`).
+* **Core Complex Functions:**
+    * `real(x)`, `imag(x)`: Extract real/imaginary parts.
+    * `abs(x)`: Magnitude (modulus).
+    * `phase(x)`: Argument/angle in radians $(-\pi, \pi]$.
+    * `conj(x)`: Complex conjugate.
+* **Exponential & Logarithmic Functions (Principal Values):**
+    * `exp(x)`: $e^x$.
+    * `log(x)`: Natural logarithm.
+    * `log10(x)`: Base-10 logarithm.
+    * `log2(x)`: Base-2 logarithm.
+    * `sqrt(x)`: Principal square root.
+* **Trigonometric Functions (Radians, Principal Values for Inverses):**
+    * `sin(x)`, `cos(x)`, `tan(x)`
+    * `asin(x)`, `acos(x)`, `atan(x)`
+* **Hyperbolic Functions (Principal Values for Inverses):**
+    * `sinh(x)`, `cosh(x)`, `tanh(x)`
+    * `asinh(x)`, `acosh(x)`, `atanh(x)`
+* **Angle Conversion Functions (Operate on full complex number):**
+    * `degToRad(x)`: Scales complex number by $\pi/180$.
+    * `radToDeg(x)`: Scales complex number by $180/\pi$.
+* **Component-wise Integer Functions:**
+    * `floor(x)`, `ceil(x)`, `round(x)`, `trunc(x)`
+* **Integrated Help System:** `help [topic]` available in CLI and REPL.
 
 ## Usage
 
@@ -39,14 +61,16 @@ toycalc <expression>
 
 ```bash
 toycalc 10 + 2 * 3
-toycalc "(1+2*i) / (3-i) - ( -4 ) ^ 0.5"
+toycalc "(1+2i) / (3-i) - (-4)^0.5" # Explicit multiplication for i
+toycalc 2(3+1) # Implied multiplication
 toycalc 10 % 3.2
 toycalc log(-1)
-toycalc exp(i*pi) # (Note: 'pi' constant will be in Stage 3, use its value for now)
+toycalc exp(i*pi)
+toycalc sin(pi/2)cos(pi/2) # Implied multiplication between functions
 ```
 
-* It's **highly recommended to quote expressions** containing spaces or shell special characters (like `*`, `(`, `)`, `^`, `!`) to ensure the shell passes the expression to `toycalc` correctly.
-    Example: `toycalc "2 * (3 + 4)!"`
+* It's **highly recommended to quote expressions** containing spaces or shell special characters (like `*`, `(`, `)`, `^`) to ensure the shell passes the expression to `toycalc` correctly.
+    Example: `toycalc "2 * ( (1+i)^2 + log(e) )"`
 
 ### Interactive Mode (REPL)
 
@@ -59,8 +83,9 @@ To start the interactive mode, simply run `toycalc` without any arguments:
 You will see a prompt:
 
 ```
-ToyCalc Interactive Mode (v0.1 Stage 1)
+ToyCalc Interactive Mode (v0.2 Stage 2 with Readline & Implied Multiplication)
 Type 'exit' or 'quit' to leave, or 'help' for assistance.
+Use arrow keys for history and line editing.
 >>>
 ```
 
@@ -70,17 +95,20 @@ Then, type your expressions and press Enter:
 >>> 10 % -3
 1
 >>> (1+i)^2
-0+2i
->>> log(-1)
-0+3.141592653589793i
->>> help log
-(Help text for log will be displayed)
+2i
+>>> 2(1+i)
+2+2i
+>>> sin(pi/2)cos(0)
+1
+>>> help sin
+(Help text for sin will be displayed)
 >>> exit
 Exiting ToyCalc.
 ```
 
 * Type `exit` or `quit` to leave the interactive mode.
 * Type `help` or `help [topic]` for assistance.
+* Command history is saved in `~/.toycalc_history`.
 
 ## Building from Source
 
@@ -103,24 +131,23 @@ go test -v
 
 ## Planned Future Stages (Roadmap)
 
-* **Stage 2: Standard Mathematical Functions:**
-    * Trigonometric functions (sin, cos, tan, asin, acos, atan, atan2).
-    * Hyperbolic functions (sinh, cosh, tanh, asinh, acosh, atanh).
-    * Additional logarithmic functions (log10, log2).
-    * Explicit `sqrt(x)` function.
 * **Stage 3: Advanced Operators & Combinatorial Functions:**
-    * Factorial operator `x!` (using Gamma function: $\Gamma(x+1)$).
-    * Combinatorial functions: `nCr(n,k)` and `nPr(n,k)` (using Gamma functions).
-    * Predefined constants: `pi`, `e`.
+    * (Deferred) Factorial operator `x!` and `gamma(x)` for general complex numbers (pending robust complex Gamma solution).
+    * Combinatorial functions: `nCr(n,k)` and `nPr(n,k)` (implementation strategy pending Gamma decision; may be restricted to integers initially or deferred).
+    * Additional less common mathematical constants (e.g., `phi`).
 * **Stage 4: Usability & Parser Enhancements:**
-    * Implied multiplication (e.g., `2(3+4)`).
-    * Improved error reporting with more precise positions.
-    * More detailed and categorized help system.
-* **Stage 5: Advanced Numeric Features:**
-    * Full complex number input parsing (e.g., "3+2.5i").
+    * Improved error reporting (more context, better positioning).
+    * More detailed and categorized help system, potentially with search.
+    * Advanced REPL features (e.g., tab completion for functions/constants).
+* **Stage 5: Advanced Numeric & Expression Features:**
+    * Full complex number input parsing (e.g., "3+2.5i", "1.2e-3 - 4.5j").
     * User-defined variables.
     * (Potentially) User-defined functions.
-    * (Potentially) Support for arbitrary-precision numbers (`big.Float`, `big.Complex`).
+    * (Potential Revisit) Arbitrary-precision numbers (`big.Float`, `BigComplex`).
+* **Stage 6: Comprehensive Multi-Value Exploration Engine:**
+    * Mechanisms to explore non-principal values for multi-valued complex functions (e.g., `allRoots(base, n)`, `logBranch(z, k)`).
+    * Set-based evaluation for combinatorial results.
+    * User controls for exploration depth/criteria.
 
 ## Contributing
 
