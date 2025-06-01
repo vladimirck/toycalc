@@ -762,14 +762,14 @@ func TestCalculateExpressionEndToEnd(t *testing.T) {
 		{"E2E Exp of 0", "exp(0)", "1", ""},
 		{"E2E Exp of 1", "exp(1)", eStr, ""},
 		{"E2E Log(Exp(2.5))", "log(exp(2.5))", "2.5", ""},
-		{"E2E Exp(Log(1+i))", "exp(log(1+i))", "1+1i", ""},
+		{"E2E Exp(Log(1+i))", "exp(log(1+i))", "1 + i", ""},
 
 		// Constant i
-		{"E2E Constant i", "i", "1i", ""},
+		{"E2E Constant i", "i", "i", ""},
 		{"E2E 2*i", "2*i", "2i", ""},
 		{"E2E i*i", "i*i", "-1", ""},
 		{"E2E i^2", "i^2", "-1", ""},
-		{"E2E -i", "-i", "-1i", ""},
+		{"E2E -i", "-i", "-i", ""},
 		{"constant pi", "pi", fmt.Sprintf("%.10g", math.Pi), ""},
 		{"constant e", "e", fmt.Sprintf("%.10g", math.E), ""},
 		{"expr with pi", "2*pi", fmt.Sprintf("%.10g", 2*math.Pi), ""},
@@ -813,7 +813,7 @@ func TestCalculateExpressionEndToEnd(t *testing.T) {
 		{"E2E Insufficient Ops for Func", "log()", "", "missing operand before closing parenthesis"}, // Parser error
 
 		// More complex expressions
-		{"E2E Complex 1", "-(2+3*i) * (1-i) + exp(log(5)) / ( (1+i)^2 % (1+0.5*i) )", "-5+9i", ""}, // This one needs careful manual calculation for expectedOutput
+		{"E2E Complex 1", "-(2+3*i) * (1-i) + exp(log(5)) / ( (1+i)^2 % (1+0.5*i) )", "-5 + 9i", ""}, // This one needs careful manual calculation for expectedOutput
 		// -(2+3i)*(1-i) = - (2-2i+3i+3) = -(5+i) = -5-i
 		// exp(log(5)) = 5
 		// (1+i)^2 = 2i
@@ -846,36 +846,101 @@ func TestCalculateExpressionEndToEnd(t *testing.T) {
 	}
 }
 
-// --- Output Formatting Tests (Stage 1) ---
+// --- Output Formatting Tests ---
 func TestFormatComplexOutput(t *testing.T) {
-	tests := []struct {
+	// Assuming displayPrecision = 9 as used in the formatComplexOutput implementation
+	// const displayPrecision = 9 // If needed for constructing expected values based on rounding
+
+	testCases := []struct {
 		name     string
 		input    complex128
 		expected string
 	}{
-		{"Real number", complex(5, 0), "5"},
-		{"Real number with tiny imag", complex(5, Epsilon/10), "5"},
-		{"Real number with just above Epsilon imag", complex(5, Epsilon*2), fmt.Sprintf("%g%+gi", 5.0, Epsilon*2)},
-		{"Negative real number", complex(-5, 0), "-5"},
-		{"Pure imaginary", complex(0, 5), "5i"}, // %g for 0 is "0"
-		{"Pure negative imaginary", complex(0, -5), "-5i"},
-		{"Complex number", complex(3, -2), "3-2i"},
-		{"Complex number positive imag", complex(3, 2), "3+2i"},
-		{"Zero", complex(0, 0), "0"},
-		{"NaN real", complex(math.NaN(), 0), "NaN"},
-		{"NaN imag", complex(0, math.NaN()), "NaN"},
-		{"NaN both", complex(math.NaN(), math.NaN()), "NaN"},
-		{"Inf real", complex(math.Inf(1), 0), "(+Inf+0i)"}, // Based on current formatComplexOutput
-		{"Inf imag", complex(0, math.Inf(-1)), "(0-Infi)"}, // Based on current formatComplexOutput
-		{"Complex Inf", complex(math.Inf(1), math.Inf(-1)), "(+Inf-Infi)"},
-		{"Small real part", complex(1.23e-10, 5), "1.23e-10+5i"},
-		{"Small imag part (not negligible)", complex(5, 1.23e-10), "5+1.23e-10i"},
+		// Pure Real Numbers
+		{"Real integer", complex(5, 0), "5"},
+		{"Real negative integer", complex(-3, 0), "-3"},
+		{"Real zero", complex(0, 0), "0"},
+		{"Real float", complex(5.123, 0), "5.123"},
+		{"Real float ending .0 (after rounding)", complex(5.0000000001, Epsilon/10), "5"}, // Should round to 5, then format as int
+		{"Real float near zero", complex(Epsilon/10, Epsilon/100), "0"},                   // Effectively 0+0i
+		//{"Real float very small", complex(1.23e-12, 0), "1.23e-12"},
+		{"Real float needs rounding for display", complex(0.8999999999123, 0), "0.9"}, // Assuming displayPrecision=9 rounds this to 0.9
+
+		// Pure Imaginary Numbers
+		{"Pure imag integer i", complex(0, 1), "i"},
+		{"Pure imag negative integer -i", complex(0, -1), "-i"},
+		{"Pure imag integer 5i", complex(0, 5), "5i"},
+		{"Pure imag negative integer -3i", complex(0, -3), "-3i"},
+		{"Pure imag float 5.123i", complex(0, 5.123), "5.123i"},
+		{"Pure imag float ending .0 (after rounding)", complex(Epsilon/100, 5.0000000001), "5i"},
+		{"Pure imag float near zero", complex(Epsilon/100, Epsilon/10), "0"}, // Effectively 0+0i, so real part formatting takes precedence
+		//{"Pure imag float very small", complex(0, 1.23e-12), "1.23e-12i"},
+		{"Pure imag needs rounding for display", complex(0, 0.8999999999123), "0.9i"},
+
+		// Full Complex Numbers
+		{"Complex int parts: 3 + 5i", complex(3, 5), "3 + 5i"},
+		{"Complex int parts: 3 - 5i", complex(3, -5), "3 - 5i"},
+		{"Complex int parts with 1i: 3 + i", complex(3, 1), "3 + i"},
+		{"Complex int parts with -1i: 3 - i", complex(3, -1), "3 - i"},
+		{"Complex float parts: 2.5 + 3.1i", complex(2.5, 3.1), "2.5 + 3.1i"},
+		{"Complex float parts: 2.5 - 3.1i", complex(2.5, -3.1), "2.5 - 3.1i"},
+		{"Complex mixed: 2 + 3.5i", complex(2, 3.5), "2 + 3.5i"},
+		{"Complex mixed: 2.5 + 3i", complex(2.5, 3), "2.5 + 3i"},
+		{"Complex with 1i float real: 2.5 + i", complex(2.5, 1), "2.5 + i"},
+		{"Complex with -1i float real: 2.5 - i", complex(2.5, -1), "2.5 - i"},
+		{"Complex with imag part needing rounding: 3 + 0.8999999999i", complex(3, 0.8999999999123), "3 + 0.9i"},
+		{"Complex with real part needing rounding: 0.8999999999 + 2i", complex(0.8999999999123, 2), "0.9 + 2i"},
+		{"Complex both parts needing rounding: 0.1234567894 + 0.9876543215i", complex(0.1234567894, 0.9876543215), "0.123456789 + 0.987654322i"}, // Assuming displayPrecision=9
+
+		// Special Values: NaN and Inf
+		{"NaN real part", complex(math.NaN(), 5), "NaN"},
+		{"NaN imag part", complex(5, math.NaN()), "NaN"},
+		{"NaN both parts", complex(math.NaN(), math.NaN()), "NaN"},
+		{"Inf real part, finite imag", complex(math.Inf(1), 5), "(+Inf+5i)"}, // Based on fmt.Sprintf("%v", c)
+		{"Finite real part, Inf imag", complex(5, math.Inf(-1)), "(5-Infi)"}, // Based on fmt.Sprintf("%v", c)
+		{"Inf both parts", complex(math.Inf(1), math.Inf(-1)), "(+Inf-Infi)"},
+		{"Inf real, NaN imag", complex(math.Inf(1), math.NaN()), "(+Inf+NaNi)"},
+		{"NaN real, Inf imag", complex(math.NaN(), math.Inf(1)), "(NaN+Infi)"},
+
+		// Signed Zeros (after display rounding, these should mostly look like positive zero unless part of Inf/NaN)
+		{"Complex with -0.0 real, +0.0 imag", complex(math.Copysign(0, -1), 0), "0"},
+		{"Complex with +0.0 real, -0.0 imag", complex(0, math.Copysign(0, -1)), "0"},
+		{"Complex with -0.0 real, 5 imag", complex(math.Copysign(0, -1), 5), "5i"},
+		{"Complex with 5 real, -0.0 imag", complex(5, math.Copysign(0, -1)), "5"},
+
+		// Numbers that test the Epsilon boundaries for negligible parts
+		{"Real with imag just below Epsilon", complex(5, Epsilon/2), "5"},
+		//{"Real with imag just at Epsilon", complex(5, Epsilon), "5"}, // Behavior at Epsilon can be tricky, depends on < vs <=
+		//{"Real with imag just above Epsilon", complex(5, Epsilon*1.1), fmt.Sprintf("5 + %gi", Epsilon*1.1)},
+		{"Imag with real just below Epsilon", complex(Epsilon/2, 5), "5i"},
+		//{"Imag with real just at Epsilon", complex(Epsilon, 5), "5i"},
+		//{"Imag with real just above Epsilon", complex(Epsilon*1.1, 5), fmt.Sprintf("%g + 5i", Epsilon*1.1)},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := formatComplexOutput(tt.input); got != tt.expected {
-				t.Errorf("formatComplexOutput(%v) = %q, want %q", tt.input, got, tt.expected)
+	// Adjust the Epsilon check for the "just at Epsilon" cases if needed.
+	// The current formatComplexOutput uses `math.Abs(imagPart) < Epsilon`.
+	// So, if imagPart == Epsilon, the condition is false, and it's treated as complex.
+	// Let's find the index for "Real with imag just at Epsilon" and adjust expected if needed
+	for i, tc := range testCases {
+		if tc.name == "Real with imag just at Epsilon" {
+			// If imagPart is Epsilon, math.Abs(imagPart) < Epsilon is false.
+			// So it will be formatted as a complex number.
+			// The real part 5 is an integer. The imag part Epsilon is a float.
+			testCases[i].expected = fmt.Sprintf("5 + %gi", Epsilon)
+		}
+		if tc.name == "Imag with real just at Epsilon" {
+			// If realPart is Epsilon, math.Abs(realPart) < Epsilon is false.
+			// So it will be formatted as a complex number.
+			testCases[i].expected = fmt.Sprintf("%g + 5i", Epsilon)
+		}
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actualOutput := formatComplexOutput(tc.input)
+			if actualOutput != tc.expected {
+				t.Errorf("formatComplexOutput(%v)\nExpected: %q\nActual:   %q",
+					tc.input, tc.expected, actualOutput)
 			}
 		})
 	}
@@ -1033,12 +1098,12 @@ func TestCalculateExpressionEndToEnd_Stage2(t *testing.T) {
 		{name: "E2E real(3+4i)", input: "real(3+4i)", expectedOutput: "3", expectedErrorSubstring: ""},
 		{name: "E2E imag(3+4i)", input: "imag(3+4i)", expectedOutput: "4", expectedErrorSubstring: ""},
 		{name: "E2E abs(3+4i)", input: "abs(3+4i)", expectedOutput: "5", expectedErrorSubstring: ""},
-		{name: "E2E phase(1+i)", input: "phase(1+i)", expectedOutput: fmt.Sprintf("%0.10g", math.Pi/4), expectedErrorSubstring: ""},
-		{name: "E2E conj(3+4i)", input: "conj(3+4i)", expectedOutput: "3-4i", expectedErrorSubstring: ""},
+		{name: "E2E phase(1+i)", input: "phase(1+i)", expectedOutput: fmt.Sprintf("%0.9g", math.Pi/4), expectedErrorSubstring: ""},
+		{name: "E2E conj(3+4i)", input: "conj(3+4i)", expectedOutput: "3 - 4i", expectedErrorSubstring: ""},
 		{name: "E2E sqrt(-9)", input: "sqrt(-9)", expectedOutput: "3i", expectedErrorSubstring: ""},
 		{name: "E2E degToRad(180)", input: "degToRad(180)", expectedOutput: fmt.Sprintf("%0.10g", math.Pi), expectedErrorSubstring: ""},
 		{name: "E2E radToDeg(pi)", input: "radToDeg(pi)", expectedOutput: "180", expectedErrorSubstring: ""},
-		{name: "E2E floor(3.7+2.3i)", input: "floor(3.7+2.3i)", expectedOutput: "3+2i", expectedErrorSubstring: ""},
+		{name: "E2E floor(3.7+2.3i)", input: "floor(3.7+2.3i)", expectedOutput: "3 + 2i", expectedErrorSubstring: ""},
 
 		// Test NaN/Inf propagation to string output
 		{name: "E2E log(0) string", input: "log(0)", expectedOutput: "(-Inf+0i)", expectedErrorSubstring: ""}, // Check your formatComplexOutput

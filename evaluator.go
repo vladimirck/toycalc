@@ -35,69 +35,142 @@ func calculateExpression(expressionString string) (string, error) {
 	return formatComplexOutput(resultComplex), nil
 }
 
-func formatComplexOutput(c complex128) string { // Renamed back if you prefer
-	realPart := real(c)
-	imagPart := imag(c)
+// Helper to round a float64 to a specific number of decimal places for display
+// This helps in making numbers like 0.89999999991 display as 0.9 if precision is, say, 8-10
+func roundForDisplay(val float64, precision int) float64 {
+	if math.IsNaN(val) || math.IsInf(val, 0) {
+		return val // Don't round NaN or Inf
+	}
+	scale := math.Pow(10, float64(precision))
+	return math.Round(val*scale) / scale
+}
 
+const displayPrecision = 10 // Or a configurable value, for rounding before formatting
+
+// Helper to check if a float64 (potentially after rounding for display) is effectively an integer
+func isEffectivelyInteger(f float64, comparisonEpsilon float64) bool {
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return false
+	}
+	// After f has been rounded to displayPrecision, check if it's an integer.
+	// A small epsilon is still useful here to account for tiny residuals
+	// if math.Round(f) itself isn't bit-perfectly the same as f when f is an integer.
+	return math.Abs(f-math.Round(f)) < comparisonEpsilon
+}
+
+// Ternary helper for cleaner sign logic if needed elsewhere
+func Ternary(condition bool, trueVal, falseVal string) string {
+	if condition {
+		return trueVal
+	}
+	return falseVal
+}
+
+// isEffectivelyZero checks if f (already rounded for display) is zero.
+func isEffectivelyZero(f float64, comparisonEpsilon float64) bool {
+	// After f has been rounded to displayPrecision, check if it's zero.
+	return math.Abs(f) < comparisonEpsilon
+}
+
+func roundToDecimalPlaces(val float64, places int) float64 {
+	if math.IsNaN(val) || math.IsInf(val, 0) {
+		return val
+	}
+	if places < 0 {
+		places = 0
+	} // Or handle error
+	scale := math.Pow(10, float64(places))
+	return math.Round(val*scale) / scale
+}
+
+func formatComplexOutput(c complex128) string {
+	realRaw := real(c)
+	imagRaw := imag(c)
+
+	// 1. Handle NaN/Inf (no rounding for these)
 	if cmplx.IsNaN(c) {
-		return "NaN"
+		// ... (NaN formatting as before) ...
+		return "NaN" // Simplified for brevity
 	}
 	if cmplx.IsInf(c) {
-		return fmt.Sprintf("%v", c) // Default Go formatting for Inf
+		return fmt.Sprintf("%v", c) // ... (Inf formatting as before) ...
 	}
 
-	// Check if the imaginary part is negligible
-	if math.Abs(imagPart) < Epsilon { // Epsilon defined in core.go
-		// Imaginary part is negligible, display only the real part
-		// Check if the real part is essentially an integer
-		if math.Abs(realPart-math.Round(realPart)) < Epsilon { // Check if realPart is very close to an integer
-			return fmt.Sprintf("%.0f", realPart) // Format as integer
-		}
-		return fmt.Sprintf("%0.10g", realPart) // Format as float (concise)
-	}
+	// 2. Apply display rounding based on global/user setting outputDisplayPrecision
+	realVal := roundToDecimalPlaces(realRaw, outputDisplayPrecision)
+	imagVal := roundToDecimalPlaces(imagRaw, outputDisplayPrecision)
 
-	if math.Abs(realPart) < Epsilon { // Epsilon defined in core.go
-		// Imaginary part is negligible, display only the real part
-		// Check if the real part is essentially an integer
-		if math.Abs(imagPart-math.Round(imagPart)) < Epsilon { // Check if realPart is very close to an integer
-			return fmt.Sprintf("%.0fi", imagPart) // Format as integer
-		}
-		return fmt.Sprintf("%.10gi", imagPart) // Format as float (concise)
-	}
+	// 3. Determine characteristics based on these "display-ready" values using Epsilon
+	//    Epsilon here is for comparing these already-rounded numbers to perfect zero or integer.
+	realIsZero := isEffectivelyZero(realVal, Epsilon)
+	imagIsZero := isEffectivelyZero(imagVal, Epsilon)
+	realIsInt := isEffectivelyInteger(realVal, Epsilon)
+	imagIsInt := isEffectivelyInteger(imagVal, Epsilon)
 
-	// Display the full complex number
-	// We need to format real and imaginary parts potentially as integers if they are whole numbers
-	realStr := ""
-	if math.Abs(realPart-math.Round(realPart)) < Epsilon {
-		realStr = fmt.Sprintf("%.0f", realPart)
-	} else {
-		realStr = fmt.Sprintf("%.10g", realPart)
-	}
+	// 4. Format based on outputFormatMode (auto, fixed, sci) and outputDisplayPrecision
+	var realStr /*imagStr,*/, imagSignStr, imagMagStr string
 
-	imagStr := ""
-	// For the imaginary part, we always want the sign if it's not part of "0i"
-	if math.Abs(imagPart-math.Round(imagPart)) < Epsilon {
-		// %.0f for imagPart, then add "i"
-		// We need to handle the sign explicitly for the imaginary part if it's formatted as an integer
-		if imagPart >= 0 {
-			imagStr = fmt.Sprintf("+%.0fi", imagPart)
+	// --- Format Real Part ---
+	switch outputFormatMode {
+	case "fixed":
+		realStr = fmt.Sprintf("%.*f", outputDisplayPrecision, realVal)
+	case "sci":
+		realStr = fmt.Sprintf("%.*e", outputDisplayPrecision, realVal)
+	default: // "auto"
+		if realIsZero && imagIsZero {
+			return "0"
+		} // Handle 0+0i early
+		if realIsInt {
+			realStr = fmt.Sprintf("%.0f", realVal)
 		} else {
-			imagStr = fmt.Sprintf("%.0fi", imagPart) // Negative sign will be included by %.0f
+			realStr = fmt.Sprintf("%g", realVal)
 		}
-	} else {
-		imagStr = fmt.Sprintf("%+.10gi", imagPart) // %+g includes sign and is concise
 	}
 
-	// Special case: if real part is exactly 0 and imag part is not negligible
-	if math.Abs(realPart) < Epsilon {
-		// If imagStr already starts with "+", remove it if we are only printing the imaginary part
-		if imagStr[0] == '+' {
-			return imagStr[1:] // e.g. "2i" instead of "+2i"
+	// --- Format Imaginary Part (if not negligible) ---
+	if !imagIsZero {
+		absImagVal := math.Abs(imagVal)
+		isImagMagOne := isEffectivelyZero(absImagVal-1.0, Epsilon)
+
+		switch outputFormatMode {
+		case "fixed":
+			imagMagStr = fmt.Sprintf("%.*f", outputDisplayPrecision, absImagVal)
+		case "sci":
+			imagMagStr = fmt.Sprintf("%.*e", outputDisplayPrecision, absImagVal)
+		default: // "auto"
+			if isImagMagOne {
+				imagMagStr = "" // For "i"
+			} else if imagIsInt {
+				imagMagStr = fmt.Sprintf("%.0f", absImagVal)
+			} else {
+				imagMagStr = fmt.Sprintf("%g", absImagVal)
+			}
 		}
-		return imagStr // e.g. "-2i"
+
+		if imagVal < -Epsilon { // Check against -Epsilon for robust sign
+			imagSignStr = "-"
+		} else {
+			imagSignStr = "+"
+		}
 	}
 
-	return fmt.Sprintf("%s%s", realStr, imagStr)
+	// --- Assemble Output ---
+	if imagIsZero {
+		return realStr // Purely real (or 0+0i was handled)
+	}
+
+	if realIsZero { // Purely imaginary
+		if isEffectivelyZero(math.Abs(imagVal)-1.0, Epsilon) { // Is magnitude 1?
+			return Ternary(imagVal < 0, "-i", "i")
+		}
+		return fmt.Sprintf("%s%si", Ternary(imagVal < 0, "-", ""), imagMagStr)
+	}
+
+	// Full complex number
+	if isEffectivelyZero(math.Abs(imagVal)-1.0, Epsilon) { // Is magnitude of imag 1?
+		return fmt.Sprintf("%s %s i", realStr, imagSignStr)
+	}
+	return fmt.Sprintf("%s %s %si", realStr, imagSignStr, imagMagStr)
 }
 
 // Helper for Modulo operation based on Gaussian integer remainder:

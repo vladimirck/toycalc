@@ -33,6 +33,24 @@ var helpTopics = map[string]string{
 		"  (Type 'help functions' for a full list).\n\n" +
 		"Type 'help <topic>' for more information on a specific feature (e.g., 'help +', 'help log').",
 
+	"set format": "Command: set format <mode> [N]\n" +
+		"  Sets the output display format for numbers.\n" +
+		"  Modes:\n" +
+		"    auto         : Default. Concise output, integers shown without decimals (e.g., 5, 3.14, 1.2e-5).\n" +
+		"                   Uses the current display precision for pre-rounding.\n" +
+		"    fixed <N>    : Fixed-point decimal notation with N digits after the decimal point.\n" +
+		"                   Example: set format fixed 4  (Output for pi: 3.1416)\n" +
+		"    sci <N>      : Scientific notation with N digits after the decimal point for the significand.\n" +
+		"                   Example: set format sci 6  (Output for pi: 3.141590e+00)\n" +
+		"  N is an integer, typically 0-20. This N also updates the general display precision.",
+
+	"set precision": "Command: set precision <N>\n" +
+		"  Sets the number of decimal places (N) to which numbers are rounded for display purposes\n" +
+		"  before being formatted according to the current format mode ('auto', 'fixed', or 'sci').\n" +
+		"  This also sets the precision used by 'fixed N' and 'sci N' formats directly.\n" +
+		"  N is an integer, typically 0-20.\n" +
+		"    Example: set precision 9 (default for 'auto' pre-rounding)\n" +
+		"    Example: set format fixed 2 (equivalent to 'set format fixed' then 'set precision 2' for fixed mode)",
 	"operators": "Supported operators:\n" +
 		"  +  : Addition (binary)\n" +
 		"  -  : Subtraction (binary) / Unary Minus (prefix)\n" +
@@ -137,12 +155,14 @@ var helpTopics = map[string]string{
 		"    Example: exp(i*" + fmt.Sprintf("%g", math.Pi/2) + ")    (Result: i)",
 
 	"output": "Output Formatting:\n" +
-		"  Results are displayed as complex numbers (e.g., a+bi or a-bi).\n" +
-		"  If the imaginary part of a result is very close to zero (negligible based on internal epsilon),\n" +
-		"  only the real part is displayed.\n" +
-		"  If the real part is negligible and the imaginary part is not, the output is like '2i' or '-3.5i'.\n" +
-		"  Whole numbers (in real or imaginary parts) are displayed without unnecessary decimal points (e.g., '5' instead of '5.0').\n" +
-		"  Handles 'NaN' (Not a Number) and standard complex 'Inf' (Infinity) representations for results where applicable.",
+		"  Results are displayed as complex numbers. Formatting can be controlled.\n" +
+		"  See 'help set format' and 'help set precision' for details.\n\n" +
+		"  Default ('auto' mode) behavior:\n" +
+		"  - If imaginary part is negligible, only the real part is displayed.\n" +
+		"  - If real part is negligible, output is like '2i' or '-i'.\n" +
+		"  - Whole numbers formatted without unnecessary decimals (e.g., '5').\n" +
+		"  - Handles 'NaN' and complex 'Inf' representations.",
+
 	"constants": "Supported constants:\n" +
 		"  i  : The imaginary unit, complex(0, 1).\n" +
 		"  pi : The mathematical constant π (Pi), approx. 3.1415926535...\n" +

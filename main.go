@@ -6,10 +6,14 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/chzyer/readline" // Import the readline library
 )
+
+var outputFormatMode string = "auto" // "auto", "fixed", "sci" (as before)
+var outputDisplayPrecision int = 9   // Default number of decimal places to round to for display
 
 // processExpression encapsulates the calculation and printing logic.
 func processExpression(expressionString string) {
@@ -26,8 +30,9 @@ func processExpression(expressionString string) {
 
 // startInteractiveMode starts the REPL for toycalc using the readline library.
 func startInteractiveMode() {
-	fmt.Println("ToyCalc Interactive Mode (v0.2 Stage 1 with Readline)") // Updated version
-	fmt.Println("Type 'exit' or 'quit' to leave, or 'help' for assistance.")
+	fmt.Println("ToyCalc Interactive Mode (v0.3 Stage 3)") // Updated version
+	fmt.Println("Type 'exit', 'quit', or 'help' for assistance.")
+	fmt.Println("Use 'set format [auto|fixed N|sci N]' to change output format.")
 	fmt.Println("Use arrow keys for history and line editing.")
 
 	var historyFile string
@@ -40,77 +45,120 @@ func startInteractiveMode() {
 	}
 
 	rl, err := readline.NewEx(&readline.Config{
-		Prompt:          ">>> ",
-		HistoryFile:     historyFile,
-		AutoComplete:    nil, // You can add autocompletion later if needed
-		InterruptPrompt: "^C",
-		EOFPrompt:       "exit", // What happens when Ctrl+D is pressed
-
-		HistorySearchFold:   true, // Case-insensitive history search
-		FuncFilterInputRune: nil,  // No input filtering
+		Prompt:              ">>> ",
+		HistoryFile:         historyFile,
+		AutoComplete:        nil,
+		InterruptPrompt:     "^C",
+		EOFPrompt:           "exit",
+		HistorySearchFold:   true,
+		FuncFilterInputRune: nil,
 	})
+
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error initializing readline: %v\n", err)
-		// Fallback to basic input if readline fails (optional)
-		fmt.Println("Falling back to basic input due to readline initialization error.")
-		startBasicInteractiveMode() // You might want to keep your old bufio version as a fallback
+		fmt.Fprintf(os.Stderr, "Error initializing advanced readline: %v\n", err)
+		fmt.Println("Falling back to basic interactive mode.")
+		startBasicInteractiveMode()
 		return
 	}
-	defer rl.Close()     // Make sure to close readline instance
-	rl.SetPrompt(">>> ") // Redundant if set in NewEx, but can be changed dynamically
+	defer rl.Close()
 
 	for {
 		line, err := rl.Readline()
 
-		if err != nil {
-			if err == readline.ErrInterrupt { // Ctrl+C
-				// If you want Ctrl+C to exit, uncomment below. Otherwise, it just breaks the current line.
-				// fmt.Println("Interrupt received, exiting.")
-				// break
-				continue // Or print a new prompt
-			} else if err == io.EOF { // Ctrl+D
+		if err != nil { // Handle Readline errors
+			if err == readline.ErrInterrupt {
+				continue // New prompt
+			} else if err == io.EOF {
 				fmt.Println("Exiting ToyCalc (EOF).")
 				break
 			}
-			// Other read errors
-			fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
-			break // Exit on other persistent errors
+			fmt.Fprintf(os.Stderr, "Readline error: %v\n", err)
+			break
 		}
 
 		input := strings.TrimSpace(line)
 
 		if input == "" {
-			continue // Skip empty lines
+			continue
 		}
 
-		// Add to history (readline handles this automatically if HistoryFile is set,
-		// but you can also manually add if needed for more control using rl.SaveHistory(input))
-		// For automatic history saving to file on each command, it's usually handled by rl.Close()
-		// or if you need explicit saves, you might do it after each command if not using HistoryFile in config.
-		// With HistoryFile in NewEx, readline typically handles loading on start and saving on close.
-
 		lowerInput := strings.ToLower(input)
-		if lowerInput == "exit" || lowerInput == "quit" {
+		parts := strings.Fields(lowerInput) // Split input into words
+
+		if parts[0] == "exit" || parts[0] == "quit" {
 			fmt.Println("Exiting ToyCalc.")
 			break
 		}
 
-		if strings.HasPrefix(lowerInput, "help") {
-			parts := strings.Fields(input)
+		if parts[0] == "help" {
 			topic := ""
 			if len(parts) > 1 {
 				topic = strings.Join(parts[1:], " ")
 			}
 			displayHelp(topic)
+		} else if parts[0] == "set" {
+			if len(parts) == 1 {
+				fmt.Println("Usage: set <format|precision> <options>")
+				fmt.Println("Example: set format fixed 4")
+				fmt.Println("         set precision 6")
+				continue
+			}
+			switch parts[1] {
+			case "format":
+				if len(parts) < 3 {
+					fmt.Println("Usage: set format <auto|fixed N|sci N>")
+					fmt.Println("Example: set format fixed 4")
+					fmt.Println("         set format sci 6")
+					fmt.Println("         set format auto")
+					continue
+				}
+				mode := parts[2]
+				precision := outputDisplayPrecision // Keep current precision if not specified for auto
+				if mode == "fixed" || mode == "sci" {
+					if len(parts) < 4 {
+						fmt.Printf("Usage: set format %s <N> (where N is number of digits)\n", mode)
+						continue
+					}
+					p, err := strconv.Atoi(parts[3])
+					if err != nil || p < 0 || p > 20 { // Set a reasonable max precision
+						fmt.Println("Error: Precision N must be a non-negative integer (e.g., 0-20).")
+						continue
+					}
+					precision = p
+				} else if mode != "auto" {
+					fmt.Printf("Error: Unknown format mode '%s'. Use 'auto', 'fixed N', or 'sci N'.\n", mode)
+					continue
+				}
+
+				outputFormatMode = mode
+				outputDisplayPrecision = precision
+				fmt.Printf("Output format set to: %s", outputFormatMode)
+				if outputFormatMode != "auto" {
+					fmt.Printf(", %d digits precision", outputDisplayPrecision)
+				}
+				fmt.Println()
+
+			case "precision":
+				if len(parts) < 3 {
+					fmt.Println("Usage: set precision <N> (where N is number of digits, e.g., 0-20)")
+					continue
+				}
+				p, err := strconv.Atoi(parts[2])
+				if err != nil || p < 0 || p > 20 { // Max precision
+					fmt.Println("Error: Precision N must be a non-negative integer (e.g., 0-20).")
+					continue
+				}
+				outputDisplayPrecision = p
+				fmt.Printf("Display precision set to: %d digits (affects 'fixed', 'sci', and pre-rounding for 'auto' mode)\n", outputDisplayPrecision)
+			default:
+				fmt.Printf("Error: Unknown option for 'set': '%s'. Try 'set format ...' or 'set precision ...'.\n", parts[1])
+
+			}
 		} else {
-			processExpression(input)
+			// Process as mathematical expression
+			processExpression(input) // Use the original 'input' not 'lowerInput'
 		}
 	}
-	// Save history on exit (readline might do this automatically on Close if HistoryFile is set)
-	// err = rl.SaveHistory(historyFile) // This might be redundant if HistoryFile is used in NewEx
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Error saving history: %v\n", err)
-	// }
 }
 
 // startBasicInteractiveMode is your original interactive mode as a fallback
