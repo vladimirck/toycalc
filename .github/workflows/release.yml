@@ -1,0 +1,110 @@
+name: ToyCalc Release
+
+# Controls when the workflow will run
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on tags starting with 'v' (e.g., v0.2.0, v1.0.0-alpha)
+
+jobs:
+  create-release-and-build-assets:
+    name: Create Release and Build Assets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to create releases and upload assets
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24' # Match your project's Go version
+
+      # It's good practice to ensure all dependencies from go.mod are fetched
+      # This is especially true if your build process doesn't automatically do it
+      # or if you want to leverage caching more effectively earlier.
+      - name: Download Go modules (including readline)
+        run: go mod download
+
+      # --- Build for Linux (amd64) ---
+      - name: Build for Linux (amd64)
+        env:
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          echo "Building for $GOOS/$GOARCH..."
+          go build -o toycalc-linux-amd64 main.go core.go lexer.go parser.go evaluator.go help.go
+          tar -czvf toycalc-linux-amd64.tar.gz toycalc-linux-amd64
+          sha256sum toycalc-linux-amd64.tar.gz > toycalc-linux-amd64.tar.gz.sha256
+
+      # --- Build for Windows (amd64) ---
+      - name: Build for Windows (amd64)
+        env:
+          GOOS: windows
+          GOARCH: amd64
+        run: |
+          echo "Building for $GOOS/$GOARCH..."
+          go build -o toycalc-windows-amd64.exe main.go core.go lexer.go parser.go evaluator.go help.go
+          zip toycalc-windows-amd64.zip toycalc-windows-amd64.exe
+          sha256sum toycalc-windows-amd64.zip > toycalc-windows-amd64.zip.sha256
+
+      # --- Create GitHub Release ---
+      # This step uses the GITHUB_TOKEN provided by GitHub Actions
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }} # Gets the tag name that triggered the workflow
+          release_name: Release ${{ github.ref_name }}
+          body: |
+            Official release for ToyCalc version ${{ github.ref_name }}.
+            Please find attached binaries for Linux and Windows.
+            Checksums are provided for verification.
+          draft: false
+          prerelease: contains(github.ref_name, '-') # Marks as pre-release if tag contains a hyphen (e.g., v0.2.0-alpha)
+
+      # --- Upload Linux Asset ---
+      - name: Upload Linux Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./toycalc-linux-amd64.tar.gz
+          asset_name: toycalc-linux-amd64.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload Linux Checksum
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./toycalc-linux-amd64.tar.gz.sha256
+          asset_name: toycalc-linux-amd64.tar.gz.sha256
+          asset_content_type: text/plain
+
+      # --- Upload Windows Asset ---
+      - name: Upload Windows Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./toycalc-windows-amd64.zip
+          asset_name: toycalc-windows-amd64.zip
+          asset_content_type: application/zip
+
+      - name: Upload Windows Checksum
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./toycalc-windows-amd64.zip.sha256
+          asset_name: toycalc-windows-amd64.zip.sha256
+          asset_content_type: text/plain
