@@ -1001,7 +1001,7 @@ func TestStage2FunctionsEvaluator(t *testing.T) {
 		{name: "degToRad(180)", input: "degToRad(180)", expectedResult: complex(math.Pi, 0), expectedError: ""},
 		{name: "degToRad(90+180i)", input: "degToRad(90 + 180i)", expectedResult: complex(math.Pi/2.0, math.Pi), expectedError: ""}, // (90+180i/pi) * (pi/180) = pi/2 + i
 		{name: "radToDeg(pi)", input: "radToDeg(pi)", expectedResult: complex(180, 0), expectedError: ""},
-		{name: "radToDeg(pi/2 + i)", input: fmt.Sprintf("radToDeg(pi/2 + i)"), expectedResult: complex(90, 180/math.Pi), expectedError: ""},
+		{name: "radToDeg(pi/2 + i)", input: "radToDeg(pi/2 + i)", expectedResult: complex(90, 180/math.Pi), expectedError: ""},
 
 		// Component-wise Integer Functions
 		{name: "floor(3.7+2.3i)", input: "floor(3.7+2.3i)", expectedResult: complex(3, 2), expectedError: ""},

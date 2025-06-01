@@ -72,14 +72,14 @@ func NewParser(tokens []Token) *Parser {
 }
 
 // peekCurrentToken looks at the token at currentIndex without advancing
-func (p *Parser) peekCurrentToken() Token {
+/*func (p *Parser) peekCurrentToken() Token {
 	if p.currentIndex < len(p.tokens) {
 		return p.tokens[p.currentIndex]
 	}
 	// Should ideally not be called if currentIndex is already at EOF,
 	// but return EOF if it happens. The last token from lexer is EOF.
 	return p.tokens[len(p.tokens)-1] // This will be EOF
-}
+}*/
 
 // consumeToken advances currentIndex and returns the token that was just consumed.
 func (p *Parser) consumeToken() Token {
@@ -134,13 +134,13 @@ func isLeftParen(tokenType TokenType) bool {
 	return false
 }
 
-func isRightParen(tokenType TokenType) bool {
+/*func isRightParen(tokenType TokenType) bool {
 	switch tokenType {
 	case RPAREN, RBRACKET, RBRACE:
 		return true
 	}
 	return false
-}
+}*/
 
 func getMatchingLeftParen(rightParenType TokenType) TokenType {
 	switch rightParenType {
@@ -352,7 +352,7 @@ func (p *Parser) ParseToRPN() ([]Token, error) {
 			p.expectOperand = true // After '(', we expect an operand (or unary operator)
 
 		case RPAREN, RBRACKET, RBRACE:
-			if p.expectOperand && len(p.outputQueue) > 0 && p.outputQueue[len(p.outputQueue)-1].Type != COMMA {
+			/*if p.expectOperand && len(p.outputQueue) > 0 && p.outputQueue[len(p.outputQueue)-1].Type != COMMA {
 				// Case like "( )" or "(,". Check if the output queue's state makes sense.
 				// If we expect an operand but see a ')' and the output queue isn't empty due to an argument,
 				// it might be an empty pair of parentheses like `()` in `f()`.
@@ -361,7 +361,7 @@ func (p *Parser) ParseToRPN() ([]Token, error) {
 				// A simple `()` might be invalid.
 				// If the parser encounters something like `(`, `EOF` without an operand for `log(`, this check is too late.
 				// The check `if p.expectOperand` implies nothing was pushed to outputQueue since last operator/LPAREN/comma
-			}
+			}*/
 			if p.expectOperand && (len(p.outputQueue) == 0 || isOperator(p.outputQueue[len(p.outputQueue)-1].Type) || isLeftParen(p.outputQueue[len(p.outputQueue)-1].Type) || p.outputQueue[len(p.outputQueue)-1].Type == COMMA) {
 				// This means something like `()` or `(,)` or `(*)` which is an error if an operand was expected
 				// but the part before `)` is not a valid operand.

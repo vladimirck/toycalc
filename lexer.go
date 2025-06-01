@@ -34,13 +34,13 @@ func (l *Lexer) readChar() {
 }
 
 // peekChar looks ahead in the input without consuming the character.
-func (l *Lexer) peekChar() rune {
+/*func (l *Lexer) peekChar() rune {
 	if l.readPosition >= len(l.input) {
 		return 0
 	}
 	r, _ := utf8.DecodeRuneInString(l.input[l.readPosition:])
 	return r
-}
+}*/
 
 func (l *Lexer) NextToken() Token {
 	var tok Token
