@@ -37,15 +37,15 @@ func calculateExpression(expressionString string) (string, error) {
 
 // Helper to round a float64 to a specific number of decimal places for display
 // This helps in making numbers like 0.89999999991 display as 0.9 if precision is, say, 8-10
-func roundForDisplay(val float64, precision int) float64 {
+/*func roundForDisplay(val float64, precision int) float64 {
 	if math.IsNaN(val) || math.IsInf(val, 0) {
 		return val // Don't round NaN or Inf
 	}
 	scale := math.Pow(10, float64(precision))
 	return math.Round(val*scale) / scale
-}
+}*/
 
-const displayPrecision = 10 // Or a configurable value, for rounding before formatting
+//const displayPrecision = 10 // Or a configurable value, for rounding before formatting
 
 // Helper to check if a float64 (potentially after rounding for display) is effectively an integer
 func isEffectivelyInteger(f float64, comparisonEpsilon float64) bool {
