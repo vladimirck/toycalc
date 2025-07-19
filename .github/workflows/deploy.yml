@@ -25,8 +25,7 @@ jobs:
       # 3. Compila la aplicación para Linux
       #    El binario se llamará 'toycalc-web'
       - name: Build application
-        working-directory: ./toycalc-web
-        run: go build
+        run: go build -C ./toycalc-web
 
       # 4. Copia el binario compilado a tu servidor
       - name: Copy binary to server
@@ -35,7 +34,7 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
-          source: "toycalc-web"
+          source: "./toycalc-web/toycalc-web"
           target: "/home/${{ secrets.USER }}/toycalc" # Directorio en tu servidor
 
       # 5. Se conecta a tu servidor y reinicia el servicio
