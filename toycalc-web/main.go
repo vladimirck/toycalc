@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"html/template"
 	"log"
@@ -9,6 +10,9 @@ import (
 
 	toycalc_core "github.com/vladimirck/toycalc/toycalc-core"
 )
+
+//go:embed templates
+var templateFiles embed.FS
 
 // PageData contiene los datos que se pasarán a la plantilla HTML.
 type PageData struct {
@@ -29,7 +33,7 @@ func main() {
 // handleCalculator se encarga de las peticiones a la página.
 func handleCalculator(w http.ResponseWriter, r *http.Request) {
 	// Parsea la plantilla HTML. Es importante manejar el error.
-	tmpl, err := template.ParseFiles("templates/index.html")
+	tmpl, err := template.ParseFS(templateFiles, "templates/index.html")
 	if err != nil {
 		http.Error(w, "Error al cargar la página", http.StatusInternalServerError)
 		log.Println("Error parsing template:", err)
@@ -38,8 +42,8 @@ func handleCalculator(w http.ResponseWriter, r *http.Request) {
 
 	// Obtiene la expresión del formulario enviado (parámetro GET 'expression').
 	expression := r.URL.Query().Get("expression")
-	gaID := os.Getenv("GOOGLE_ANALYTICS_ID")
-	
+	gaID := os.Getenv("GA_ID")
+
 	data := PageData{
 		Expression:        expression,
 		GoogleAnalyticsID: gaID,
