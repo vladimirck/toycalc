@@ -5,14 +5,16 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 
 	toycalc_core "github.com/vladimirck/toycalc/toycalc-core"
 )
 
 // PageData contiene los datos que se pasarán a la plantilla HTML.
 type PageData struct {
-	Expression string
-	Result     string
+	Expression        string
+	Result            string
+	GoogleAnalyticsID string
 }
 
 func main() {
@@ -36,8 +38,11 @@ func handleCalculator(w http.ResponseWriter, r *http.Request) {
 
 	// Obtiene la expresión del formulario enviado (parámetro GET 'expression').
 	expression := r.URL.Query().Get("expression")
+	gaID := os.Getenv("GOOGLE_ANALYTICS_ID")
+	
 	data := PageData{
-		Expression: expression,
+		Expression:        expression,
+		GoogleAnalyticsID: gaID,
 	}
 
 	// Si hay una expresión, la calcula.

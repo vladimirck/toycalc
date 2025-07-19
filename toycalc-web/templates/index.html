@@ -17,6 +17,25 @@
         font-family: "Inter", sans-serif;
       }
     </style>
+
+    <!-- Google Analytics Snippet -->
+    <!-- Este bloque solo se renderizará si el ID de GA está presente -->
+    {{if .GoogleAnalyticsID}}
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id={{.GoogleAnalyticsID}}"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "{{.GoogleAnalyticsID}}");
+    </script>
+    {{end}}
+    <!-- Fin de Google Analytics Snippet -->
   </head>
   <body class="h-full flex items-center justify-center antialiased">
     <div class="max-w-md w-full p-8 space-y-6 bg-white rounded-xl shadow-lg">
