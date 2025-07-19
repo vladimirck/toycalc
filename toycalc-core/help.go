@@ -1,5 +1,5 @@
 // help.go
-package main
+package toycalc_core
 
 import (
 	"fmt"
@@ -329,7 +329,7 @@ var helpTopics = map[string]string{
 // displayHelp shows help information.
 // If topic is empty, it shows general help or a list of topics.
 // If topic is specified, it shows help for that topic.
-func displayHelp(topic string) {
+func DisplayHelp(topic string) {
 	topic = strings.ToLower(strings.TrimSpace(topic))
 	availableTopics := []string{
 		"usage", "general", "operators", "unary", "+", "-", "*", "/", "%", "^", "grouping",

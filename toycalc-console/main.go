@@ -9,18 +9,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/chzyer/readline" // Import the readline library
+	"github.com/chzyer/readline"                              // Import the readline library
+	toycalc_core "github.com/vladimirck/toycalc/toycalc-core" // Import your toycalc core package
 )
 
-var outputFormatMode string = "auto" // "auto", "fixed", "sci" (as before)
-var outputDisplayPrecision int = 9   // Default number of decimal places to round to for display
+
 
 // processExpression encapsulates the calculation and printing logic.
 func processExpression(expressionString string) {
 	if strings.TrimSpace(expressionString) == "" {
 		return // Do nothing for empty input in REPL
 	}
-	resultStr, err := calculateExpression(expressionString)
+	resultStr, err := toycalc_core.CalculateExpression(expressionString)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return
@@ -95,7 +95,7 @@ func startInteractiveMode() {
 			if len(parts) > 1 {
 				topic = strings.Join(parts[1:], " ")
 			}
-			displayHelp(topic)
+			toycalc_core.DisplayHelp(topic)
 		} else if parts[0] == "set" {
 			if len(parts) == 1 {
 				fmt.Println("Usage: set <format|precision> <options>")
@@ -113,7 +113,7 @@ func startInteractiveMode() {
 					continue
 				}
 				mode := parts[2]
-				precision := outputDisplayPrecision // Keep current precision if not specified for auto
+				precision := toycalc_core.OutputDisplayPrecision // Keep current precision if not specified for auto
 				if mode == "fixed" || mode == "sci" {
 					if len(parts) < 4 {
 						fmt.Printf("Usage: set format %s <N> (where N is number of digits)\n", mode)
@@ -130,11 +130,11 @@ func startInteractiveMode() {
 					continue
 				}
 
-				outputFormatMode = mode
-				outputDisplayPrecision = precision
-				fmt.Printf("Output format set to: %s", outputFormatMode)
-				if outputFormatMode != "auto" {
-					fmt.Printf(", %d digits precision", outputDisplayPrecision)
+				toycalc_core.OutputFormatMode = mode
+				toycalc_core.OutputDisplayPrecision = precision
+				fmt.Printf("Output format set to: %s", toycalc_core.OutputFormatMode)
+				if toycalc_core.OutputFormatMode != "auto" {
+					fmt.Printf(", %d digits precision", toycalc_core.OutputDisplayPrecision)
 				}
 				fmt.Println()
 
@@ -148,8 +148,8 @@ func startInteractiveMode() {
 					fmt.Println("Error: Precision N must be a non-negative integer (e.g., 0-20).")
 					continue
 				}
-				outputDisplayPrecision = p
-				fmt.Printf("Display precision set to: %d digits (affects 'fixed', 'sci', and pre-rounding for 'auto' mode)\n", outputDisplayPrecision)
+				toycalc_core.OutputDisplayPrecision = p
+				fmt.Printf("Display precision set to: %d digits (affects 'fixed', 'sci', and pre-rounding for 'auto' mode)\n", toycalc_core.OutputDisplayPrecision)
 			default:
 				fmt.Printf("Error: Unknown option for 'set': '%s'. Try 'set format ...' or 'set precision ...'.\n", parts[1])
 
@@ -192,7 +192,7 @@ func startBasicInteractiveMode() {
 			if len(parts) > 1 {
 				topic = strings.Join(parts[1:], " ")
 			}
-			displayHelp(topic)
+			toycalc_core.DisplayHelp(topic)
 		} else {
 			processExpression(input)
 		}
@@ -219,10 +219,10 @@ func main() {
 			if len(os.Args) > 2 {
 				topic = strings.Join(os.Args[2:], " ")
 			}
-			displayHelp(topic)
+			toycalc_core.DisplayHelp(topic)
 		} else {
 			expressionString := strings.Join(os.Args[1:], " ")
-			resultStr, err := calculateExpression(expressionString)
+			resultStr, err := toycalc_core.CalculateExpression(expressionString)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)

@@ -1,5 +1,5 @@
 // parser.go
-package main
+package toycalc_core
 
 import (
 	"fmt"

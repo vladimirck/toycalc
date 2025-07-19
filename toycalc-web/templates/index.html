@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ToyCalc Web</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      src="https://unpkg.com/htmx.org@1.9.10"
+      integrity="sha384-rq6ui8VZyZJNYvQ6xltwmiDFpDhtg3ULzdrkL/glcZfJDrg/Jn+rVFDCRK9c9/S"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body
+    class="bg-gray-900 text-white flex items-center justify-center min-h-screen"
+  >
+    <div class="bg-gray-700 p-8 rounded-lg shadow-xl w-80">
+      <div id="calculator-ui-container">{{ template "display.html" . }}</div>
+
+      <div class="grid grid-cols-4 gap-2 mt-4">
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="7"
+          class="calc-btn"
+        >
+          7
+        </button>
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="8"
+          class="calc-btn"
+        >
+          8
+        </button>
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="9"
+          class="calc-btn"
+        >
+          9
+        </button>
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="/"
+          class="calc-btn op-btn"
+        >
+          /
+        </button>
+
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="4"
+          class="calc-btn"
+        >
+          4
+        </button>
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="5"
+          class="calc-btn"
+        >
+          5
+        </button>
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="6"
+          class="calc-btn"
+        >
+          6
+        </button>
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="*"
+          class="calc-btn op-btn"
+        >
+          *
+        </button>
+
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="1"
+          class="calc-btn"
+        >
+          1
+        </button>
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="2"
+          class="calc-btn"
+        >
+          2
+        </button>
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="3"
+          class="calc-btn"
+        >
+          3
+        </button>
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="-"
+          class="calc-btn op-btn"
+        >
+          -
+        </button>
+
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="0"
+          class="calc-btn col-span-2"
+        >
+          0
+        </button>
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="."
+          class="calc-btn"
+        >
+          .
+        </button>
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="+"
+          class="calc-btn op-btn"
+        >
+          +
+        </button>
+
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="C"
+          class="calc-btn reset-btn"
+        >
+          C
+        </button>
+        <button
+          hx-post="/"
+          hx-target="#calculator-ui-container"
+          hx-swap="outerHTML"
+          name="input"
+          value="="
+          class="calc-btn equals-btn col-span-3"
+        >
+          =
+        </button>
+      </div>
+    </div>
+    <style>
+      .calc-btn {
+        @apply p-4 rounded-lg bg-gray-600 hover:bg-gray-500 text-xl font-bold;
+      }
+      .op-btn {
+        @apply bg-orange-500 hover:bg-orange-600;
+      }
+      .reset-btn {
+        @apply bg-red-500 hover:bg-red-600;
+      }
+      .equals-btn {
+        @apply bg-green-500 hover:bg-green-600;
+      }
+    </style>
+  </body>
+</html>

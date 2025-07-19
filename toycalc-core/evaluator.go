@@ -1,5 +1,5 @@
 // evaluator.go
-package main
+package toycalc_core
 
 import (
 	"fmt"
@@ -9,8 +9,11 @@ import (
 	"strings" // For ToLower on function names
 )
 
-// calculateExpression orchestrates Lex, Parse, EvaluateRPN, and formatComplexOutput
-func calculateExpression(expressionString string) (string, error) {
+var OutputFormatMode string = "auto" // "auto", "fixed", "sci" (as before)
+var OutputDisplayPrecision int = 9   // Default number of decimal places to round to for display
+
+// CalculateExpression orchestrates Lex, Parse, EvaluateRPN, and formatComplexOutput
+func CalculateExpression(expressionString string) (string, error) {
 	tokens, err := Lex(expressionString)
 	if err != nil {
 		return "", err
@@ -97,8 +100,8 @@ func formatComplexOutput(c complex128) string {
 	}
 
 	// 2. Apply display rounding based on global/user setting outputDisplayPrecision
-	realVal := roundToDecimalPlaces(realRaw, outputDisplayPrecision)
-	imagVal := roundToDecimalPlaces(imagRaw, outputDisplayPrecision)
+	realVal := roundToDecimalPlaces(realRaw, OutputDisplayPrecision)
+	imagVal := roundToDecimalPlaces(imagRaw, OutputDisplayPrecision)
 
 	// 3. Determine characteristics based on these "display-ready" values using Epsilon
 	//    Epsilon here is for comparing these already-rounded numbers to perfect zero or integer.
@@ -111,11 +114,11 @@ func formatComplexOutput(c complex128) string {
 	var realStr /*imagStr,*/, imagSignStr, imagMagStr string
 
 	// --- Format Real Part ---
-	switch outputFormatMode {
+	switch OutputFormatMode {
 	case "fixed":
-		realStr = fmt.Sprintf("%.*f", outputDisplayPrecision, realVal)
+		realStr = fmt.Sprintf("%.*f", OutputDisplayPrecision, realVal)
 	case "sci":
-		realStr = fmt.Sprintf("%.*e", outputDisplayPrecision, realVal)
+		realStr = fmt.Sprintf("%.*e", OutputDisplayPrecision, realVal)
 	default: // "auto"
 		if realIsZero && imagIsZero {
 			return "0"
@@ -132,11 +135,11 @@ func formatComplexOutput(c complex128) string {
 		absImagVal := math.Abs(imagVal)
 		isImagMagOne := isEffectivelyZero(absImagVal-1.0, Epsilon)
 
-		switch outputFormatMode {
+		switch OutputFormatMode {
 		case "fixed":
-			imagMagStr = fmt.Sprintf("%.*f", outputDisplayPrecision, absImagVal)
+			imagMagStr = fmt.Sprintf("%.*f", OutputDisplayPrecision, absImagVal)
 		case "sci":
-			imagMagStr = fmt.Sprintf("%.*e", outputDisplayPrecision, absImagVal)
+			imagMagStr = fmt.Sprintf("%.*e", OutputDisplayPrecision, absImagVal)
 		default: // "auto"
 			if isImagMagOne {
 				imagMagStr = "" // For "i"

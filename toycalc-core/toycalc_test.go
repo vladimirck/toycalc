@@ -1,5 +1,5 @@
 // toycalc_test.go
-package main
+package toycalc_core
 
 import (
 	"fmt"
@@ -658,7 +658,7 @@ func TestEvaluateRPN(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// We use calculateExpression for an end-to-end test for the evaluator
-			_, err := calculateExpression(tc.input)
+			_, err := CalculateExpression(tc.input)
 
 			checkError(t, tc.expectedError, err)
 
@@ -827,7 +827,7 @@ func TestCalculateExpressionEndToEnd(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			actualOutput, err := calculateExpression(tc.input)
+			actualOutput, err := CalculateExpression(tc.input)
 			checkError(t, tc.expectedErrorSubstring, err)
 
 			if tc.expectedErrorSubstring == "" && err == nil {
@@ -1111,7 +1111,7 @@ func TestCalculateExpressionEndToEnd_Stage2(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			actualOutput, err := calculateExpression(tc.input)
+			actualOutput, err := CalculateExpression(tc.input)
 			checkError(t, tc.expectedErrorSubstring, err)
 
 			if tc.expectedErrorSubstring == "" && err == nil {

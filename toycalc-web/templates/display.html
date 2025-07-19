@@ -1,0 +1,9 @@
+<div
+  id="calculator-display"
+  class="bg-gray-800 text-white text-3xl p-4 rounded mb-4 text-right"
+>
+  {{ if .Error }}
+  <span class="text-red-400">{{.Error}}</span>
+  {{ else if .Result }} {{.Result}} {{ else }} {{.Expression}} {{ end }}
+</div>
+<input type="hidden" name="current_expression" value="{{.Expression}}" />
