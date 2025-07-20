@@ -26,7 +26,7 @@ jobs:
       #    El binario se llamará 'toycalc-web'
       - name: Build application
         working-directory: ./toycalc-web
-        run: go get github.com/vladimirck/toycalc/toycalc-core && go build
+        run: go get github.com/vladimirck/toycalc/toycalc-core && go build && cp toycalc-web ../
 
       # 4. Copia el binario compilado a tu servidor
       - name: Copy binary to server
@@ -35,7 +35,7 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
-          source: "toycalc-web/toycalc-web" # Asegúrate de que este es el nombre correcto del binario
+          source: "toycalc-web" # Asegúrate de que este es el nombre correcto del binario
           target: "/home/${{ secrets.USER }}/toycalc" # Directorio en tu servidor
 
       # 5. Se conecta a tu servidor y reinicia el servicio
