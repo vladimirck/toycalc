@@ -14,23 +14,23 @@ jobs:
 
       # 1. Análisis de Estilo y Calidad (Linting) para cada módulo
       - name: Run golangci-lint on toycalc-core
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: v1.59
+          version: v2.1.0
           working-directory: ./toycalc-core
           args: ./...
 
       - name: Run golangci-lint on toycalc-console
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: v1.59
+          version: v2.1.0
           working-directory: ./toycalc-console
           args: ./...
 
       - name: Run golangci-lint on toycalc-web
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: v1.59
+          version: v2.1.0
           working-directory: ./toycalc-web
           args: ./...
 
