@@ -1,97 +1,46 @@
-name: ToyCalc Tests & Quality Checks
-
-# Controls when the workflow will run
-on:
-  push:
-    branches: [ main ] # Or your default branch (e.g., master)
-  pull_request:
-    branches: [ main ] # Or your default branch
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-
+name: tests
+on: [push, pull_request]
 jobs:
-  quality-checks:
-    name: Run Tests, Linters, and Security Checks
+  test:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Check out the code from your repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Set up the Go environment
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24' # Specify your project's Go version (e.g., 1.21.x or 1.22.x)
+          go-version: "1.24"
 
-      # Step 3: Cache Go modules to speed up subsequent builds
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: ~/go/pkg/mod # Path to Go module cache
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }} # Cache key based on OS and go.sum
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      # Step 4: Install Go dependencies (if any, beyond standard library)
-      - name: Installing module readline
-        run: go get github.com/chzyer/readline@v1.5.1
-      # For toycalc, assuming all dependencies are handled by go.sum and vendored if needed
-      # For tools like golangci-lint and govulncheck, we install them or use actions.
-      # `go mod download` can be useful if you have many direct dependencies.
-      # - name: Download Go modules
-      #   run: go mod download
-
-      # Step 5: Style Testing - Check Code Formatting
-      - name: Check Go formatting
-        run: |
-          # gofmt -l . lists files that are not formatted.
-          # test -z "$(gofmt -l .)" checks if the output of gofmt -l . is empty.
-          # If not empty, it means files need formatting, and the script exits with an error.
-          test -z "$(gofmt -l .)" || (echo "Go files are not formatted. Please run 'gofmt -w .' on your code." && exit 1)
-
-      # Step 6: Security Testing - Static Analysis with go vet
-      - name: Run go vet
-        run: go vet ./...
-
-      # Step 7: Security Testing - Linting with golangci-lint
-      # This uses a dedicated action which handles installation.
-      # You can customize with a .golangci.yml file in your repo root.
+      # 1. Análisis de Estilo y Calidad (Linting)
+      #    Ejecuta golangci-lint en todo el proyecto.
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          # Optional: version of golangci-lint to use (defaults to latest stable)
-          version: v1.64 # Or use a newer version like v1.58 if available
-          # Optional: working directory, useful if Go project is not at repo root
-          # working-directory: your-go-project-subdirectory
-          # Optional: show only new issues if it's a PR
-          # only-new-issues: true
-          args: --timeout=5m # Increase timeout if needed for larger projects
+          # La versión de la herramienta a utilizar. 'latest' es una buena opción.
+          version: v1.59
+          # Se ejecuta en todo el proyecto.
+          args: ./...
 
-      # Step 8: Unit and Integration Testing
-      - name: Run Go tests
-        run: go test ./... -v -race -coverprofile=coverage.out
-        # -v: verbose output
-        # -race: enables the race detector
-        # -coverprofile: generates a coverage profile
+      # 2. Escaneo de Seguridad de Código
+      #    Busca vulnerabilidades comunes en el código Go.
+      - name: Run gosec security scanner
+        uses: securego/gosec@master
+        with:
+          # El argumento './...' escanea todos los subdirectorios.
+          args: -quiet ./...
 
-      # Step 9: (Optional) Upload Code Coverage
-      # Uncomment and configure if you use a service like Codecov or Coveralls
-      # - name: Upload coverage to Codecov
-      #   uses: codecov/codecov-action@v4
-      #   with:
-      #     token: ${{ secrets.CODECOV_TOKEN }} # Usually not needed for public repos
-      #     files: ./coverage.out
-      #     fail_ci_if_error: true # Optional: fail CI if upload fails
-
-      # Step 10: Security Testing - Vulnerability Check with govulncheck
-      - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
-
+      # 3. Comprobación de Vulnerabilidades en Dependencias
+      #    Usa la base de datos de vulnerabilidades de Go para revisar tus dependencias.
       - name: Run govulncheck
-        run: |
-          # Ensure the GOBIN path is available or call directly
-          # Adding GOBIN to PATH for this step:
-          export PATH=$(go env GOPATH)/bin:$PATH
-          govulncheck ./...
+        uses: golang/govulncheck-action@v1
+
+      # 4. Ejecución de Pruebas Unitarias (con detector de condiciones de carrera)
+      #    Se ejecutan las pruebas para cada módulo de forma independiente.
+      - name: Test toycalc-core module
+        working-directory: ./toycalc-core
+        run: go test -race -v ./...
+
+      - name: Test toycalc-console module
+        working-directory: ./toycalc-console
+        run: go test -race -v ./...
