@@ -20,7 +20,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24" # O la versión de Go que uses
+          go-version: "1.24.4" # O la versión de Go que uses
 
       # 3. Compila la aplicación para Linux
       #    El binario se llamará 'toycalc-web'

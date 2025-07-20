@@ -10,33 +10,53 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.24.4"
 
-      # 1. Análisis de Estilo y Calidad (Linting)
-      #    Ejecuta golangci-lint en todo el proyecto.
-      - name: Run golangci-lint
+      # 1. Análisis de Estilo y Calidad (Linting) para cada módulo
+      - name: Run golangci-lint on toycalc-core
         uses: golangci/golangci-lint-action@v6
         with:
-          # La versión de la herramienta a utilizar. 'latest' es una buena opción.
           version: v1.59
-          # Se ejecuta en todo el proyecto.
+          working-directory: ./toycalc-core
           args: ./...
 
-      # 2. Escaneo de Seguridad de Código
-      #    Busca vulnerabilidades comunes en el código Go.
-      - name: Run gosec security scanner
+      - name: Run golangci-lint on toycalc-console
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.59
+          working-directory: ./toycalc-console
+          args: ./...
+
+      - name: Run golangci-lint on toycalc-web
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.59
+          working-directory: ./toycalc-web
+          args: ./...
+
+      # 2. Escaneo de Seguridad de Código para cada módulo
+      - name: Run gosec security scanner on toycalc-core
         uses: securego/gosec@master
         with:
-          # El argumento './...' escanea todos los subdirectorios.
           args: -quiet ./...
 
-      # 3. Comprobación de Vulnerabilidades en Dependencias
-      #    Usa la base de datos de vulnerabilidades de Go para revisar tus dependencias.
-      - name: Run govulncheck
+      # 3. Comprobación de Vulnerabilidades en Dependencias para cada módulo
+      - name: Run govulncheck on toycalc-core
         uses: golang/govulncheck-action@v1
+        with:
+          go-package: ./toycalc-core
 
-      # 4. Ejecución de Pruebas Unitarias (con detector de condiciones de carrera)
-      #    Se ejecutan las pruebas para cada módulo de forma independiente.
+      - name: Run govulncheck on toycalc-console
+        uses: golang/govulncheck-action@v1
+        with:
+          go-package: ./toycalc-console
+
+      - name: Run govulncheck on toycalc-web
+        uses: golang/govulncheck-action@v1
+        with:
+          go-package: ./toycalc-web
+
+      # 4. Ejecución de Pruebas Unitarias para cada módulo
       - name: Test toycalc-core module
         working-directory: ./toycalc-core
         run: go test -race -v ./...

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	toycalc_core "github.com/vladimirck/toycalc/toycalc-core"
 )
@@ -22,12 +23,22 @@ type PageData struct {
 }
 
 func main() {
-	// Define el manejador para la ruta principal.
+	// El manejador de rutas sigue usando el mux por defecto de Go.
 	http.HandleFunc("/", handleCalculator)
 
+	// Se crea un servidor http.Server personalizado para poder configurar timeouts.
+	// Esto soluciona la advertencia de seguridad G114 de gosec.
+	server := &http.Server{
+		Addr:         ":8080",
+		Handler:      nil, // nil significa que se usará el http.DefaultServeMux
+		ReadTimeout:  10 * time.Second, // Tiempo máximo para leer la petición completa.
+		WriteTimeout: 10 * time.Second, // Tiempo máximo para escribir la respuesta.
+		IdleTimeout:  15 * time.Second, // Tiempo máximo para una conexión inactiva.
+	}
+
 	fmt.Println("Servidor escuchando en http://localhost:8080")
-	// Inicia el servidor en el puerto 8080.
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	// Se inicia el servidor personalizado en lugar de http.ListenAndServe.
+	log.Fatal(server.ListenAndServe())
 }
 
 // handleCalculator se encarga de las peticiones a la página.
