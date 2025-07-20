@@ -35,7 +35,7 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
-          source: "./toycalc-web"
+          source: "toycalc-web/toycalc-web" # Asegúrate de que este es el nombre correcto del binario
           target: "/home/${{ secrets.USER }}/toycalc" # Directorio en tu servidor
 
       # 5. Se conecta a tu servidor y reinicia el servicio
