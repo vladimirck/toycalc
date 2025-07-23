@@ -68,7 +68,8 @@ func handleCalculator(w http.ResponseWriter, r *http.Request) {
 			data.Result = "Error: " + err.Error()
 		} else {
 			// Si el cálculo es exitoso, muestra el resultado.
-			data.Result = result
+			data.Result = data.Expression + " = " + result
+			data.Expression = "" // Limpia la expresión para no mostrarla en el resultado.
 		}
 	}
 
